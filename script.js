@@ -4,17 +4,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchButton = document.getElementById('searchButton');
 
     let allContentData = []; // This array will hold our parsed content (keyword -> paragraph)
+    let biomarkerUrlMap = new Map(); //initialize map
 
-    // Function to load content from the "paneldata.txt" file 
+    // Function to load content from the "paneldata.txt" and "biomarkerurl.txt" file 
     async function loadContent() {
         try {
-            const response = await fetch('paneldata.txt'); 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`); //if response not found, then declare error 
+            const contentResponse = await fetch('paneldata.txt');
+            const urlsResponse = await fetch('biomarkerurl.txt'); //fetching the biomarker map file
+            
+            if (!contentResponse.ok) {
+                if (contentResponse.status === 404) {
+                    console.warn('Main data file (content.txt) not found on server. Please upload one.');
+                    paragraphContainer.innerHTML = '<p style="text-align: center;">No main data file found on server. Please upload a content.txt file to get started.</p>';
+                } 
+                else {
+                    throw new Error(`HTTP error! status: ${contentResponse.status} for content.txt`);
+                }
+                return;
             }
-            const panel_data = await response.text(); 
 
-            allContentData = parseTextContent(panel_data); //array that holds all keywords and paragraphs 
+            let rawBiomarkerUrls = '';
+
+            if (!urlsResponse.ok) {
+                console.warn(`Biomarker URLs file (biomarker_urls.txt) not found or error: ${urlsResponse.status}. Biomarkers will not be clickable.`);
+            // No need to throw an error here, just set an empty map
+                biomarkerUrlMap = new Map(); 
+            } else {
+                rawBiomarkerUrls = await urlsResponse.text();
+                biomarkerUrlMap = parseBiomarkerMap(rawBiomarkerUrls); // <--- Correctly assign the Map
+            }
+
+            const panel_data = await contentResponse.text(); 
+            allContentData = parseTextContent(panel_data, biomarkerUrlMap); //parse the biomarker map file
 
             renderInitialParagraphs();
         } catch (error) {
@@ -23,24 +44,80 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function parseTextContent(rawText) {
-        const parsedData = [];
-        const lines = rawText.split('\n').filter(line => line.trim() !== ''); //split by line and trim 
+    function parseBiomarkerMap(rawText) { //map panel names to urls 
+        const mapData = new Map();
+        const lines = rawText.split('\n').filter(line => line.trim() !== ''); //split by new line and trim
 
         lines.forEach(line => {
-            const firstColonIndex = line.indexOf(':');
-            const keyword = line.substring(0, firstColonIndex).trim(); // Text before the first colon (aka panel name)
-            const paragraph = line.substring(firstColonIndex + 1).trim(); // Text after the first colon (aka biomarkers and loinc ids)
-            if (keyword && paragraph) { // Check if both keyword and paragraph exist
-                parsedData.push({ //appending the data to the array
-                    keyword: keyword.toLowerCase(), 
-                    paragraph: paragraph // it recognizes the panels 
-                }); //each element has a keyword and paragraph attribute
-            }
-            else{
-                console.warn('Skipping line due to missing keyword or paragraph:', line);
+            const firstIndex = line.indexOf(':'); //find the first index of :
+            if (firstIndex>0 && firstIndex<line.length - 1) {
+                const biomarker_name = line.substring(0, firstIndex).trim(); // Get the panel name before the colon
+                const url = line.substring(firstIndex + 1).trim(); // Get the URL after the colon
+                if (biomarker_name && url) { // Check if both panel name and URL exist
+                    mapData.set(biomarker_name.toLowerCase(), url); // Store in the map with panel name as key
+                }
+            } else {
+                console.warn('Skipping line due to missing panel name or URL:', line);
             }
         });
+
+        return mapData; 
+
+    }
+
+    function parseTextContent(rawText, mapData) {
+        const parsedData = [];
+        const entries = rawText.split('---').filter(entry => entry.trim() !== ''); //split by --- and trim 
+
+        entries.forEach(entry => {
+            entry = entry.trim(); 
+            if(!entry)
+                return;
+
+            const lines = entry.split('\n').filter(line => line.trim() !== ''); //split by new line and trim
+            
+            if (lines.length === 0) {
+                console.warn('Skipping empty entry:', entry);
+                return;
+            }
+            const panel_name = lines[0].trim(); // First line is the keyword
+        
+            let formattedbiomarkerlines = [];
+            if(lines.length > 1){
+                const biomarkerlines = lines.slice(1);
+                biomarkerlines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if(!trimmedLine){
+                        return;
+                    }
+                    let biomarkerText = trimmedLine;
+                    let biomarkerurl = '#';
+                    if(mapData.has(biomarkerText.toLowerCase())){
+                        biomarkerurl = mapData.get(biomarkerText.toLowerCase()); // get associated url from biomarker name 
+                    }
+                    else{
+                        console.warn('No URL found for biomarker:', trimmedLine);
+                    }
+
+                    formattedbiomarkerlines.push(`<a href="${biomarkerurl}" class="biomarker-link">${biomarkerText}</a>`); //formatting the biomarker text with url
+                });
+            }
+
+            const fullbiomarkerurls = formattedbiomarkerlines.join('<br>');  
+        
+            if(panel_name){
+                const panel_keyword = panel_name.toLowerCase();
+                parsedData.push({ //appending the data to the array
+                    keyword: panel_keyword, 
+                    paragraph: `<h3>${panel_name}</h3>` + 
+                                    `<strong>Biomarker(s):</strong>` + '<br>' +
+                                    fullbiomarkerurls,
+                });
+            } else{
+                console.warn('Skipping entry block due to missing panel name (first line is empty):', trimmedEntryBlock);
+            }
+        });
+
         return parsedData;
     }
 
@@ -50,12 +127,10 @@ document.addEventListener('DOMContentLoaded', function() {
         paragraphContainer.innerHTML = ''; 
         allContentData.forEach(item => {
             const p = document.createElement('p');
-            // Add classes for styling and initial hiding
             p.classList.add('content-paragraph', 'hide'); //dynamically adding class here upon creating paragraph 
-            // Store the keyword on the paragraph itself for easy lookup
             p.setAttribute('data-keyword', item.keyword.toLowerCase());
             // Set the actual paragraph text
-            p.textContent = item.paragraph;
+            p.innerHTML = item.paragraph;
             // Add the paragraph to our container on the page
             paragraphContainer.appendChild(p);
         });
@@ -107,11 +182,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // --- Event Listeners and Initial Load ---
-
     // Load content when the page first loads
     loadContent();
 
-    // Attach click listener to the search button (though onkeyup provides live search)
     searchButton.addEventListener('click', filterContent);
 });
