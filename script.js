@@ -3,177 +3,288 @@ document.addEventListener('DOMContentLoaded', function() {
     const paragraphContainer = document.getElementById('paragraphContainer');
     const searchButton = document.getElementById('searchButton');
 
-    let allContentData = []; // This array will hold our parsed content (keyword -> paragraph)
-    let biomarkerUrlMap = new Map(); //initialize map
+    let allContentData = [];
+    let biomarkerUrlMap = new Map();
 
-    // Function to load content from the "paneldata.txt" and "biomarkerurl.txt" file 
+    // Your Google Apps Script deployment URL (replace with your actual URL)
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx-bSF5iLaE3T4zrwlcZDQ2xZjeeWD_Kra4VDvJ6W3wIhnD4W9gBGL79N4MKRbr-_tx1w/exec';
+
+    // Load content from Google Apps Script
     async function loadContent() {
         try {
-            const contentResponse = await fetch('paneldata.txt');
-            const urlsResponse = await fetch('biomarkerurl.txt'); //fetching the biomarker map file
+            console.log('Loading data from Google Apps Script...');
             
-            if (!contentResponse.ok) {
-                if (contentResponse.status === 404) {
-                    console.warn('Main data file (content.txt) not found on server. Please upload one.');
-                    paragraphContainer.innerHTML = '<p style="text-align: center;">No main data file found on server. Please upload a content.txt file to get started.</p>';
-                } 
-                else {
-                    throw new Error(`HTTP error! status: ${contentResponse.status} for content.txt`);
-                }
-                return;
+            const response = await fetch(APPS_SCRIPT_URL);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-
-            let rawBiomarkerUrls = '';
-
-            if (!urlsResponse.ok) {
-                console.warn(`Biomarker URLs file (biomarker_urls.txt) not found or error: ${urlsResponse.status}. Biomarkers will not be clickable.`);
-            // No need to throw an error here, just set an empty map
-                biomarkerUrlMap = new Map(); 
-            } else {
-                rawBiomarkerUrls = await urlsResponse.text();
-                biomarkerUrlMap = parseBiomarkerMap(rawBiomarkerUrls); // <--- Correctly assign the Map
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Unknown error from Apps Script');
             }
-
-            const panel_data = await contentResponse.text(); 
-            allContentData = parseTextContent(panel_data, biomarkerUrlMap); //parse the biomarker map file
-
+            
+            console.log('Data loaded successfully');
+            console.log('Labcorp data rows:', data.data.labcorpData.length);
+            console.log('Biomarkers data rows:', data.data.biomarkersData.length);
+            
+            // Parse the data
+            biomarkerUrlMap = parseBiomarkersData(data.data.biomarkersData);
+            allContentData = parseLabcorpData(data.data.labcorpData, biomarkerUrlMap);
+            
             renderInitialParagraphs();
+            
         } catch (error) {
             console.error('Error loading content:', error);
-            paragraphContainer.innerHTML = '<p style="color: red; text-align: center;">Error loading content. Please check if text file exists and is correctly formatted.</p>'; //must add html/css info here as well for the message 
+            paragraphContainer.innerHTML = `
+                <p style="color: red; text-align: center;">
+                    Error loading content from Google Sheets.<br>
+                    ${error.message}<br>
+                    Please check your Apps Script deployment.
+                </p>
+            `;
         }
     }
 
-    function parseBiomarkerMap(rawText) { //map panel names to urls 
-        const mapData = new Map();
-        const lines = rawText.split('\n').filter(line => line.trim() !== ''); //split by new line and trim
-
-        lines.forEach(line => {
-            const firstIndex = line.indexOf(':'); //find the first index of :
-            if (firstIndex>0 && firstIndex<line.length - 1) {
-                const biomarker_name = line.substring(0, firstIndex).trim(); // Get the panel name before the colon
-                const url = line.substring(firstIndex + 1).trim(); // Get the URL after the colon
-                if (biomarker_name && url) { // Check if both panel name and URL exist
-                    mapData.set(biomarker_name.toLowerCase(), url); // Store in the map with panel name as key
-                }
-            } else {
-                console.warn('Skipping line due to missing panel name or URL:', line);
-            }
-        });
-
-        return mapData; 
-
-    }
-
-    function parseTextContent(rawText, mapData) {
-        const parsedData = [];
-        const entries = rawText.split('---').filter(entry => entry.trim() !== ''); //split by --- and trim 
-
-        entries.forEach(entry => {
-            entry = entry.trim(); 
-            if(!entry)
-                return;
-
-            const lines = entry.split('\n').filter(line => line.trim() !== ''); //split by new line and trim
+    // Parse biomarkers data to create URL mappings
+    function parseBiomarkersData(biomarkersData) {
+        const urlMap = new Map();
+        
+        if (!biomarkersData || biomarkersData.length < 2) {
+            console.warn('No biomarker data found');
+            return urlMap;
+        }
+        
+        const headers = biomarkersData[0];
+        console.log('Biomarkers headers:', headers);
+        
+        // Find relevant columns
+        const nameColumn = findColumnIndex(headers, ['Biomarker']);
+        const urlColumn = findColumnIndex(headers, ['LOINC url']);
+        const descriptionColumn = findColumnIndex(headers, ['LOINC name']);
+        
+        console.log(`Found columns - Name: ${nameColumn}, URL: ${urlColumn}, Description: ${descriptionColumn}`);
+        
+        // Process data rows (skip header row)
+        for (let i = 1; i < biomarkersData.length; i++) {
+            const row = biomarkersData[i];
             
-            if (lines.length === 0) {
-                console.warn('Skipping empty entry:', entry);
-                return;
-            }
-            const panel_name = lines[0].trim(); // First line is the keyword
-        
-            let formattedbiomarkerlines = [];
-            if(lines.length > 1){
-                const biomarkerlines = lines.slice(1);
-                biomarkerlines.forEach(line => {
-                    const trimmedLine = line.trim();
-                    if(!trimmedLine){
-                        return;
-                    }
-                    let biomarkerText = trimmedLine;
-                    let biomarkerurl = '#';
-                    if(mapData.has(biomarkerText.toLowerCase())){
-                        biomarkerurl = mapData.get(biomarkerText.toLowerCase()); // get associated url from biomarker name 
-                    }
-                    else{
-                        console.warn('No URL found for biomarker:', trimmedLine);
-                    }
-
-                    formattedbiomarkerlines.push(`<a href="${biomarkerurl}" class="biomarker-link">${biomarkerText}</a>`); //formatting the biomarker text with url
+            if (row.length === 0) continue;
+            
+            const name = nameColumn >= 0 && row[nameColumn] ? row[nameColumn].toString().trim() : '';
+            const url = urlColumn >= 0 && row[urlColumn] ? row[urlColumn].toString().trim() : '';
+            const description = descriptionColumn >= 0 && row[descriptionColumn] ? row[descriptionColumn].toString().trim() : '';
+            
+            if (name) {
+                urlMap.set(name.toLowerCase(), {
+                    url: url || '#',
+                    description: description || ''
                 });
             }
-
-            const fullbiomarkerurls = formattedbiomarkerlines.join('<br>');  
+        }
         
-            if(panel_name){
-                const panel_keyword = panel_name.toLowerCase();
-                parsedData.push({ //appending the data to the array
-                    keyword: panel_keyword, 
-                    paragraph: `<h3>${panel_name}</h3>` + 
-                                    `<strong>Biomarker(s):</strong>` + '<br>' +
-                                    fullbiomarkerurls,
+        console.log(`Created ${urlMap.size} biomarker mappings`);
+        return urlMap;
+    }
+
+// Parse Labcorp data to create content for display
+function parseLabcorpData(labcorpData, urlMap) {
+    const contentData = [];
+    
+    if (!labcorpData || labcorpData.length < 2) {
+        console.warn('No Labcorp data found');
+        return contentData;
+    }
+    
+    const headers = labcorpData[0];
+    console.log('Labcorp headers:', headers);
+    
+    // Find the core columns
+    const urlColumn = findColumnIndex(headers, ['url']);
+    const nameColumn = findColumnIndex(headers, ['name']);
+    const cptColumn = findColumnIndex(headers, ['cpt']);
+    const testNumberColumn = findColumnIndex(headers, ['test number']);
+    
+    console.log(`Found core columns - URL: ${urlColumn}, Name: ${nameColumn}, CPT: ${cptColumn}, Test Number: ${testNumberColumn}`);
+    
+    // Find biomarker columns (starting from column E, index 4)
+    const biomarkerColumns = [];
+    const loincColumns = [];
+    
+    // Look for Biomarker/LOINC pairs starting from column E
+    for (let i = 4; i < headers.length; i++) {
+        const header = headers[i].toString().toLowerCase().trim();
+        
+        if (header.includes('biomarker')) {
+            biomarkerColumns.push(i);
+            console.log(`Found biomarker column at index ${i}: ${headers[i]}`);
+        } else if (header.includes('loinc')) {
+            loincColumns.push(i);
+            console.log(`Found LOINC column at index ${i}: ${headers[i]}`);
+        }
+    }
+    
+    console.log(`Found ${biomarkerColumns.length} biomarker columns and ${loincColumns.length} LOINC columns`);
+    
+    // Process data rows (skip header row)
+    for (let i = 1; i < labcorpData.length; i++) {
+        const row = labcorpData[i];
+        
+        if (row.length === 0) continue;
+        
+        const url = urlColumn >= 0 && row[urlColumn] ? row[urlColumn].toString().trim() : '';
+        const panelName = nameColumn >= 0 && row[nameColumn] ? row[nameColumn].toString().trim() : '';
+        const cpt = cptColumn >= 0 && row[cptColumn] ? row[cptColumn].toString().trim() : '';
+        const testNumber = testNumberColumn >= 0 && row[testNumberColumn] ? row[testNumberColumn].toString().trim() : '';
+        
+        if (!panelName) continue;
+        
+        // Extract biomarkers and their LOINC codes
+        const biomarkers = [];
+        const biomarkerData = [];
+        
+        // Process biomarker columns
+        for (let j = 0; j < biomarkerColumns.length; j++) {
+            const biomarkerIndex = biomarkerColumns[j];
+            const loincIndex = loincColumns[j]; // Corresponding LOINC column
+            
+            const biomarkerName = row[biomarkerIndex] ? row[biomarkerIndex].toString().trim() : '';
+            const loincCode = loincIndex < row.length && row[loincIndex] ? row[loincIndex].toString().trim() : '';
+            
+            if (biomarkerName) {
+                biomarkers.push(biomarkerName);
+                biomarkerData.push({
+                    name: biomarkerName,
+                    loinc: loincCode
                 });
-            } else{
-                console.warn('Skipping entry block due to missing panel name (first line is empty):', trimmedEntryBlock);
             }
+        }
+        
+        // Create formatted biomarker display with LOINC codes
+        const formattedBiomarkers = biomarkerData.map(biomarker => {
+            const biomarkerKey = biomarker.name.toLowerCase();
+            const biomarkerInfo = urlMap.get(biomarkerKey);
+            
+            let biomarkerHtml = '';
+            if (biomarkerInfo && biomarkerInfo.url !== '#') {
+                const title = biomarkerInfo.description ? ` title="${biomarkerInfo.description}"` : '';
+                biomarkerHtml = `<a href="${biomarkerInfo.url}" class="biomarker-link" target="_blank"${title}>${biomarker.name}</a>`;
+            } else {
+                biomarkerHtml = `<span class="biomarker-text">${biomarker.name}</span>`;
+            }
+            
+            // Add LOINC code if available
+            if (biomarker.loinc) {
+                biomarkerHtml += ` <span class="loinc-code">(LOINC: ${biomarker.loinc})</span>`;
+            }
+            
+            return biomarkerHtml;
         });
+        
+        // Create content paragraph
+        let paragraphContent = `<h3>${panelName}</h3>`;
+        
+        // Add URL if available
+        if (url) {
+            paragraphContent += `<p><strong>URL:</strong> <a href="${url}" target="_blank">${url}</a></p>`;
+        }
+        
+        if (cpt) {
+            paragraphContent += `<p><strong>CPT Code:</strong> ${cpt}</p>`;
+        }
+        
+        if (testNumber) {
+            paragraphContent += `<p><strong>Test Number:</strong> ${testNumber}</p>`;
+        }
+        
+        if (formattedBiomarkers.length > 0) {
+            paragraphContent += `<p><strong>Biomarkers/Tests:</strong><br>${formattedBiomarkers.join('<br>')}</p>`;
+        }
+        
+        contentData.push({
+            keyword: panelName.toLowerCase(),
+            paragraph: paragraphContent,
+            url: url,
+            cpt: cpt,
+            testNumber: testNumber,
+            biomarkers: biomarkers.map(b => b.toLowerCase()),
+            biomarkerData: biomarkerData // Store full biomarker data for future use
+        });
+    }
+    
+    console.log(`Created ${contentData.length} content entries`);
+    return contentData;
+}
 
-        return parsedData;
+    // Helper function to find column index
+    function findColumnIndex(headers, possibleNames) {
+        for (let i = 0; i < headers.length; i++) {
+            const header = headers[i].toString().toLowerCase().trim();
+            if (possibleNames.some(name => header.includes(name.toLowerCase()))) {
+                return i;
+            }
+        }
+        return -1;
     }
 
-
-    // Function to create and add all paragraphs to the page
-    function renderInitialParagraphs() {
-        paragraphContainer.innerHTML = ''; 
-        allContentData.forEach(item => {
-            const p = document.createElement('p');
-            p.classList.add('content-paragraph', 'hide'); //dynamically adding class here upon creating paragraph 
-            p.setAttribute('data-keyword', item.keyword.toLowerCase());
-            // Set the actual paragraph text
-            p.innerHTML = item.paragraph;
-            // Add the paragraph to our container on the page
-            paragraphContainer.appendChild(p);
-        });
+    // Helper function to parse biomarkers list
+    function parseBiomarkersList(text) {
+        if (!text) return [];
+        
+        const biomarkers = text
+            .split(/[,;|\n\r]+/)
+            .map(item => item.trim())
+            .filter(item => item.length > 0);
+        
+        return biomarkers;
     }
 
+    // Enhanced search function
     window.filterContent = function() {
-        const query = searchInput.value.trim().toLowerCase(); // Get input, remove spaces, make lowercase
-
-        // Get all paragraph elements we previously added
+        const query = searchInput.value.trim().toLowerCase();
         const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
-
-        let foundMatch = false; // Flag to track if any paragraph matches the query
+        let foundMatch = false;
 
         allParagraphs.forEach(p => {
-            const keyword = p.getAttribute('data-keyword'); // Get the keyword for this paragraph
+            const keyword = p.getAttribute('data-keyword');
+            const category = p.getAttribute('data-category') || '';
+            const biomarkers = p.getAttribute('data-biomarkers') || '';
             
-            // Check if the paragraph's keyword includes the search query AND the query isn't empty
-            if (keyword && keyword.includes(query) && query !== '') {
-                p.classList.remove('hide'); // Show the paragraph
-                foundMatch = true; // Set flag to true as a match was found
+            const matchesPanel = keyword && keyword.includes(query);
+            const matchesCategory = category && category.includes(query);
+            const matchesBiomarkers = biomarkers && biomarkers.includes(query);
+            
+            if ((matchesPanel || matchesCategory || matchesBiomarkers) && query !== '') {
+                p.classList.remove('hide');
+                foundMatch = true;
             } else {
-                p.classList.add('hide'); // Hide the paragraph
+                p.classList.add('hide');
             }
-
         });
 
-        // Handle the "No results found" message
+        // Handle no results message
         const existingNoResultsMessage = document.getElementById('noResultsMessage');
 
-        if (!foundMatch && query !== '') { // If no match was found AND the search query is not empty
-            if (!existingNoResultsMessage) { // Only create if it doesn't already exist
+        if (!foundMatch && query !== '') {
+            if (!existingNoResultsMessage) {
                 const noResultsDiv = document.createElement('div');
                 noResultsDiv.id = 'noResultsMessage';
-                noResultsDiv.textContent = 'No matching results found.';
+                noResultsDiv.innerHTML = `
+                    <p style="text-align: center; color: #666; font-style: italic;">
+                        No matching results found for "${query}"<br>
+                        <small>Try searching for panel names, categories, or biomarker names</small>
+                    </p>
+                `;
                 paragraphContainer.appendChild(noResultsDiv);
             }
-        } else { // If a match was found, or the query is empty, remove any existing "no results" message
+        } else {
             if (existingNoResultsMessage) {
                 existingNoResultsMessage.remove();
             }
         }
 
-        // If the search input is cleared, hide all paragraphs and remove the "no results" message
         if (query === '') {
             allParagraphs.forEach(p => p.classList.add('hide'));
             if (existingNoResultsMessage) {
@@ -182,8 +293,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Load content when the page first loads
-    loadContent();
+    // Render paragraphs
+    function renderInitialParagraphs() {
+        paragraphContainer.innerHTML = '';
+        
+        allContentData.forEach(item => {
+            const p = document.createElement('p');
+            p.classList.add('content-paragraph', 'hide');
+            p.setAttribute('data-keyword', item.keyword);
+            p.setAttribute('data-category', item.category || '');
+            p.setAttribute('data-biomarkers', item.biomarkers ? item.biomarkers.join(' ') : '');
+            p.innerHTML = item.paragraph;
+            paragraphContainer.appendChild(p);
+        });
+        
+        console.log(`Rendered ${allContentData.length} paragraphs`);
+    }
 
+    // Initialize
+    loadContent();
     searchButton.addEventListener('click', filterContent);
+    
+    // Real-time search
+    searchInput.addEventListener('input', function() {
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = setTimeout(filterContent, 300);
+    });
 });
