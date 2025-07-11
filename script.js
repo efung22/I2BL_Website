@@ -13,239 +13,351 @@ document.addEventListener('DOMContentLoaded', function() {
    const CACHE_KEY = 'labcorp_data_cache';
    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
 
-   // Add expandable biomarker styles
-   function addExpandableStyles() {
-       const expandableStyles = `
-           <style>
-               .panel-container {
-                   margin-bottom: 20px;
-                   border: 1px solid #ddd;
-                   border-radius: 8px;
-                   overflow: hidden;
-               }
-               
-               .panel-content {
-                   padding: 15px;
-                   background-color: #fff;
-               }
-               
-               .expand-all-button {
-                   background-color: #28a745;
-                   color: white;
-                   border: none;
-                   padding: 8px 16px;
-                   border-radius: 4px;
-                   cursor: pointer;
-                   font-size: 14px;
-                   margin-top: 10px;
-                   transition: background-color 0.3s;
-               }
-               
-               .expand-all-button:hover {
-                   background-color: #218838;
-               }
-               
-               .collapse-all-button {
-                   background-color: #dc3545;
-                   color: white;
-                   border: none;
-                   padding: 8px 16px;
-                   border-radius: 4px;
-                   cursor: pointer;
-                   font-size: 14px;
-                   margin-top: 10px;
-                   margin-left: 10px;
-                   transition: background-color 0.3s;
-               }
-               
-               .collapse-all-button:hover {
-                   background-color: #c82333;
-               }
-               
-               .biomarker-details-container {
-                   margin-top: 15px;
-                   padding-left: 20px;
-               }
-               
-               .biomarker-detail-expanded {
-                   margin-bottom: 15px;
-                   padding: 12px;
-                   border-left: 4px solid #007bff;
-                   background-color: #f8f9fa;
-                   border-radius: 4px;
-                   display: none;
-                   animation: slideDown 0.3s ease-out;
-               }
-               
-               .biomarker-detail-expanded.show {
-                   display: block;
-               }
-               
-               @keyframes slideDown {
-                   from {
-                       opacity: 0;
-                       max-height: 0;
-                       padding-top: 0;
-                       padding-bottom: 0;
-                   }
-                   to {
-                       opacity: 1;
-                       max-height: 500px;
-                       padding-top: 12px;
-                       padding-bottom: 12px;
-                   }
-               }
-               
-               .biomarker-detail-expanded h4 {
-                   margin: 0 0 10px 0;
-                   color: #333;
-                   font-size: 16px;
-               }
-               
-               .detail-item {
-                   margin: 5px 0;
-                   display: flex;
-                   align-items: flex-start;
-               }
-               
-               .detail-label {
-                   font-weight: bold;
-                   color: #555;
-                   min-width: 120px;
-                   margin-right: 10px;
-               }
-               
-               .detail-value {
-                   flex: 1;
-               }
-               
-               .detail-link {
-                   color: #007bff;
-                   text-decoration: none;
-               }
-               
-               .detail-link:hover {
-                   text-decoration: underline;
-               }
-               
-               .biomarker-clickable {
-                   color: #007bff;
-                   cursor: pointer;
-                   text-decoration: underline;
-                   transition: color 0.2s;
-               }
-               
-               .biomarker-clickable:hover {
-                   color: #0056b3;
-               }
-               
-               .biomarker-clickable.expanded {
-                   color: #28a745;
-                   font-weight: bold;
-               }
-           </style>
-       `;
-       
-       document.head.insertAdjacentHTML('beforeend', expandableStyles);
-   }
+    // Modified addExpandableStyles function - ADD these new styles to your existing styles
+    function addExpandableStyles() {
+        const expandableStyles = `
+            <style>
+                .panel-container {
+                    margin-bottom: 20px;
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+                
+                .panel-content {
+                    padding: 15px;
+                    background-color: #fff;
+                }
+                
+                .expand-all-button {
+                    background-color: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    margin-top: 10px;
+                    transition: background-color 0.3s;
+                }
+                
+                .expand-all-button:hover {
+                    background-color: #218838;
+                }
+                
+                .collapse-all-button {
+                    background-color: #dc3545;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    margin-top: 10px;
+                    margin-left: 10px;
+                    transition: background-color 0.3s;
+                }
+                
+                .collapse-all-button:hover {
+                    background-color: #c82333;
+                }
+                
+                .biomarker-details-container {
+                    margin-top: 15px;
+                    padding-left: 20px;
+                }
+                
+                .biomarker-detail-expanded {
+                    margin-bottom: 15px;
+                    padding: 12px;
+                    border-left: 4px solid #007bff;
+                    background-color: #f8f9fa;
+                    border-radius: 4px;
+                    display: none;
+                    animation: slideDown 0.3s ease-out;
+                }
+                
+                .biomarker-detail-expanded.invalid-biomarker {
+                    border-left: 4px solid #dc3545;
+                    background-color: #ffeaea;
+                }
+                
+                .biomarker-detail-expanded.show {
+                    display: block;
+                }
+                
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        max-height: 0;
+                        padding-top: 0;
+                        padding-bottom: 0;
+                    }
+                    to {
+                        opacity: 1;
+                        max-height: 500px;
+                        padding-top: 12px;
+                        padding-bottom: 12px;
+                    }
+                }
+                
+                .biomarker-detail-expanded h4 {
+                    margin: 0 0 10px 0;
+                    color: #333;
+                    font-size: 16px;
+                }
+                
+                .detail-item {
+                    margin: 5px 0;
+                    display: flex;
+                    align-items: flex-start;
+                }
+                
+                .detail-label {
+                    font-weight: bold;
+                    color: #555;
+                    min-width: 120px;
+                    margin-right: 10px;
+                }
+                
+                .detail-value {
+                    flex: 1;
+                }
+                
+                .detail-link {
+                    color: #007bff;
+                    text-decoration: none;
+                }
+                
+                .detail-link:hover {
+                    text-decoration: underline;
+                }
+                
+                .biomarker-clickable {
+                    color: #007bff;
+                    cursor: pointer;
+                    text-decoration: underline;
+                    transition: color 0.2s;
+                }
+                
+                .biomarker-clickable:hover {
+                    color: #0056b3;
+                }
+                
+                .biomarker-clickable.expanded {
+                    color: #28a745;
+                    font-weight: bold;
+                }
+                
+                /* NEW STYLES FOR INVALID BIOMARKERS */
+                .biomarker-clickable.invalid-biomarker {
+                    color: #dc3545;
+                }
+                
+                .biomarker-clickable.invalid-biomarker:hover {
+                    color: #c82333;
+                }
+                
+                .biomarker-clickable.invalid-biomarker.expanded {
+                    color: #dc3545;
+                    font-weight: bold;
+                }
+            </style>
+        `;
+        
+        document.head.insertAdjacentHTML('beforeend', expandableStyles);
+    }
+
+    // Helper function to check if biomarker is valid
+    function isValidBiomarker(biomarkerName, loincCode) {
+        // Check if biomarker contains "Comment"
+        if (biomarkerName.toLowerCase().includes('comment')) {
+            return false;
+        }
+        
+        // Check if biomarker has LOINC code
+        if (!loincCode || loincCode.trim() === '') {
+            return false;
+        }
+        
+        // Check if biomarker exists in biomarkerUrlMap (from "Filtered Biomarkers w/ Assays" sheet)
+        const biomarkerKey = biomarkerName.toLowerCase();
+        if (!biomarkerUrlMap.has(biomarkerKey)) {
+            return false;
+        }
+        
+        return true;
+    }
+
 
    // Toggle individual biomarker details
-   function toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer) {
-       const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
-       let detailsContainer = document.getElementById(biomarkerKey);
-       
-       if (detailsContainer) {
-           // Toggle visibility
-           const isVisible = detailsContainer.classList.contains('show');
-           if (isVisible) {
-               detailsContainer.classList.remove('show');
-               biomarkerElement.classList.remove('expanded');
-           } else {
-               detailsContainer.classList.add('show');
-               biomarkerElement.classList.add('expanded');
-           }
-       } else {
-           // Create new details container
-           detailsContainer = createBiomarkerDetailsElement(biomarkerName, biomarkerData, biomarkerKey);
-           
-           // Find or create the biomarker details container
-           let biomarkerDetailsContainer = panelContainer.querySelector('.biomarker-details-container');
-           if (!biomarkerDetailsContainer) {
-               biomarkerDetailsContainer = document.createElement('div');
-               biomarkerDetailsContainer.className = 'biomarker-details-container';
-               panelContainer.appendChild(biomarkerDetailsContainer);
-           }
-           
-           biomarkerDetailsContainer.appendChild(detailsContainer);
-           
-           // Show the details
-           setTimeout(() => {
-               detailsContainer.classList.add('show');
-               biomarkerElement.classList.add('expanded');
-           }, 10);
-       }
-   }
+   // Modified toggleBiomarkerDetails function to maintain display order
+    function toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer) {
+        const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
+        let detailsContainer = document.getElementById(biomarkerKey);
+        
+        if (detailsContainer) {
+            // Toggle visibility
+            const isVisible = detailsContainer.classList.contains('show');
+            if (isVisible) {
+                detailsContainer.classList.remove('show');
+                biomarkerElement.classList.remove('expanded');
+            } else {
+                detailsContainer.classList.add('show');
+                biomarkerElement.classList.add('expanded');
+            }
+        } else {
+            // Create new details container
+            detailsContainer = createBiomarkerDetailsElement(biomarkerName, biomarkerData, biomarkerKey);
+            
+            // Find or create the biomarker details container
+            let biomarkerDetailsContainer = panelContainer.querySelector('.biomarker-details-container');
+            if (!biomarkerDetailsContainer) {
+                biomarkerDetailsContainer = document.createElement('div');
+                biomarkerDetailsContainer.className = 'biomarker-details-container';
+                panelContainer.appendChild(biomarkerDetailsContainer);
+            }
+            
+            // Find the correct position to insert the details container
+            // Get all biomarker clickable elements in the panel
+            const allBiomarkerElements = panelContainer.querySelectorAll('.biomarker-clickable');
+            let insertPosition = 0;
+            
+            // Find the position of the current biomarker in the display order
+            for (let i = 0; i < allBiomarkerElements.length; i++) {
+                if (allBiomarkerElements[i] === biomarkerElement) {
+                    insertPosition = i;
+                    break;
+                }
+            }
+            
+            // Find existing detail containers to determine where to insert
+            const existingDetails = biomarkerDetailsContainer.querySelectorAll('.biomarker-detail-expanded');
+            
+            if (existingDetails.length === 0 || insertPosition === 0) {
+                // Insert at the beginning
+                biomarkerDetailsContainer.insertBefore(detailsContainer, biomarkerDetailsContainer.firstChild);
+            } else {
+                // Find the correct position among existing details
+                let insertAfterElement = null;
+                
+                for (let i = 0; i < existingDetails.length; i++) {
+                    const existingDetailId = existingDetails[i].id;
+                    const existingBiomarkerName = existingDetailId.replace(`${panelContainer.id}-`, '').replace(/-/g, ' ');
+                    
+                    // Find the position of this existing biomarker in the display order
+                    let existingPosition = -1;
+                    for (let j = 0; j < allBiomarkerElements.length; j++) {
+                        if (allBiomarkerElements[j].getAttribute('data-biomarker').replace(/\s+/g, ' ') === existingBiomarkerName) {
+                            existingPosition = j;
+                            break;
+                        }
+                    }
+                    
+                    if (existingPosition < insertPosition) {
+                        insertAfterElement = existingDetails[i];
+                    }
+                }
+                
+                if (insertAfterElement) {
+                    insertAfterElement.insertAdjacentElement('afterend', detailsContainer);
+                } else {
+                    biomarkerDetailsContainer.insertBefore(detailsContainer, biomarkerDetailsContainer.firstChild);
+                }
+            }
+            
+            // Show the details
+            setTimeout(() => {
+                detailsContainer.classList.add('show');
+                biomarkerElement.classList.add('expanded');
+            }, 10);
+        }
+    }
 
-   // Create biomarker details element
-   function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
-       const biomarkerKey = biomarkerName.toLowerCase();
-       const biomarkerInfo = biomarkerUrlMap.get(biomarkerKey);
-       
-       const detailsDiv = document.createElement('div');
-       detailsDiv.id = elementId;
-       detailsDiv.className = 'biomarker-detail-expanded';
-       
-       let detailsContent = `<h4>${biomarkerName}</h4>`;
-       
-       // Biomarker Name
-       detailsContent += `<div class="detail-item">`;
-       detailsContent += `<span class="detail-label">Biomarker Name:</span>`;
-       detailsContent += `<span class="detail-value">${biomarkerName}</span>`;
-       detailsContent += `</div>`;
-       
-       // LOINC Code
-       if (biomarkerData && biomarkerData.loinc) {
-           detailsContent += `<div class="detail-item">`;
-           detailsContent += `<span class="detail-label">LOINC Code:</span>`;
-           detailsContent += `<span class="detail-value">${biomarkerData.loinc}</span>`;
-           detailsContent += `</div>`;
-       }
-       
-       // LOINC Name
-       if (biomarkerInfo && biomarkerInfo.description) {
-           detailsContent += `<div class="detail-item">`;
-           detailsContent += `<span class="detail-label">LOINC Name:</span>`;
-           detailsContent += `<span class="detail-value">${biomarkerInfo.description}</span>`;
-           detailsContent += `</div>`;
-       }
-       
-       // LOINC URL
-       if (biomarkerInfo && biomarkerInfo.url && biomarkerInfo.url !== '#') {
-           detailsContent += `<div class="detail-item">`;
-           detailsContent += `<span class="detail-label">LOINC URL:</span>`;
-           detailsContent += `<span class="detail-value"><a href="${biomarkerInfo.url}" target="_blank" class="detail-link">View LOINC Details</a></span>`;
-           detailsContent += `</div>`;
-       }
-       
-       // Assay Type
-       if (biomarkerInfo && biomarkerInfo.assayType) {
-           detailsContent += `<div class="detail-item">`;
-           detailsContent += `<span class="detail-label">Assay Type:</span>`;
-           detailsContent += `<span class="detail-value">${biomarkerInfo.assayType}</span>`;
-           detailsContent += `</div>`;
-       }
-       
-       // Kit URL
-       if (biomarkerInfo && biomarkerInfo.kitUrl) {
-           detailsContent += `<div class="detail-item">`;
-           detailsContent += `<span class="detail-label">Kit URL:</span>`;
-           detailsContent += `<span class="detail-value"><a href="${biomarkerInfo.kitUrl}" target="_blank" class="detail-link">View Kit Details</a></span>`;
-           detailsContent += `</div>`;
-       }
-       
-       detailsDiv.innerHTML = detailsContent;
-       return detailsDiv;
-   }
+   // Modified createBiomarkerDetailsElement function
+    function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
+        const biomarkerKey = biomarkerName.toLowerCase();
+        const biomarkerInfo = biomarkerUrlMap.get(biomarkerKey);
+        
+        const detailsDiv = document.createElement('div');
+        detailsDiv.id = elementId;
+        detailsDiv.className = 'biomarker-detail-expanded';
+        
+        // Add invalid class if biomarker is not valid
+        const isValid = isValidBiomarker(biomarkerName, biomarkerData?.loinc);
+        if (!isValid) {
+            detailsDiv.classList.add('invalid-biomarker');
+        }
+        
+        let detailsContent = `<h4>${biomarkerName}</h4>`;
+        
+        // Add validation status
+        if (!isValid) {
+            detailsContent += `<div class="detail-item">`;
+            detailsContent += `<span class="detail-label">Status:</span>`;
+            detailsContent += `<span class="detail-value" style="color: #dc3545; font-weight: bold;">Invalid Biomarker</span>`;
+            detailsContent += `</div>`;
+        }
+        
+        // Biomarker Name
+        detailsContent += `<div class="detail-item">`;
+        detailsContent += `<span class="detail-label">Biomarker Name:</span>`;
+        detailsContent += `<span class="detail-value">${biomarkerName}</span>`;
+        detailsContent += `</div>`;
+        
+        // LOINC Code
+        if (biomarkerData && biomarkerData.loinc) {
+            detailsContent += `<div class="detail-item">`;
+            detailsContent += `<span class="detail-label">LOINC Code:</span>`;
+            detailsContent += `<span class="detail-value">${biomarkerData.loinc}</span>`;
+            detailsContent += `</div>`;
+        } else {
+            detailsContent += `<div class="detail-item">`;
+            detailsContent += `<span class="detail-label">LOINC Code:</span>`;
+            detailsContent += `<span class="detail-value" style="color: #dc3545;">Not Available</span>`;
+            detailsContent += `</div>`;
+        }
+        
+        // LOINC Name
+        if (biomarkerInfo && biomarkerInfo.description) {
+            detailsContent += `<div class="detail-item">`;
+            detailsContent += `<span class="detail-label">LOINC Name:</span>`;
+            detailsContent += `<span class="detail-value">${biomarkerInfo.description}</span>`;
+            detailsContent += `</div>`;
+        } else if (!isValid) {
+            detailsContent += `<div class="detail-item">`;
+            detailsContent += `<span class="detail-label">LOINC Name:</span>`;
+            detailsContent += `<span class="detail-value" style="color: #dc3545;">Not Available</span>`;
+            detailsContent += `</div>`;
+        }
+        
+        // LOINC URL
+        if (biomarkerInfo && biomarkerInfo.url && biomarkerInfo.url !== '#') {
+            detailsContent += `<div class="detail-item">`;
+            detailsContent += `<span class="detail-label">LOINC URL:</span>`;
+            detailsContent += `<span class="detail-value"><a href="${biomarkerInfo.url}" target="_blank" class="detail-link">View LOINC Details</a></span>`;
+            detailsContent += `</div>`;
+        }
+        
+        // Assay Type
+        if (biomarkerInfo && biomarkerInfo.assayType) {
+            detailsContent += `<div class="detail-item">`;
+            detailsContent += `<span class="detail-label">Assay Type:</span>`;
+            detailsContent += `<span class="detail-value">${biomarkerInfo.assayType}</span>`;
+            detailsContent += `</div>`;
+        }
+        
+        // Kit URL
+        if (biomarkerInfo && biomarkerInfo.kitUrl) {
+            detailsContent += `<div class="detail-item">`;
+            detailsContent += `<span class="detail-label">Kit URL:</span>`;
+            detailsContent += `<span class="detail-value"><a href="${biomarkerInfo.kitUrl}" target="_blank" class="detail-link">View Kit Details</a></span>`;
+            detailsContent += `</div>`;
+        }
+        
+        detailsDiv.innerHTML = detailsContent;
+        return detailsDiv;
+    }
 
    // Expand all biomarkers for a panel
    function expandAllBiomarkers(panelContainer) {
@@ -1354,43 +1466,54 @@ function initializeBiomarkerSearch() {
        }
    };
 
-   // Render paragraphs
-   function renderInitialParagraphs() {
-       paragraphContainer.innerHTML = '';
-       
-       allContentData.forEach((item, index) => {
-           // Create panel container
-           const panelContainer = document.createElement('div');
-           panelContainer.classList.add('panel-container', 'content-paragraph', 'hide');
-           panelContainer.setAttribute('data-keyword', item.keyword);
-           panelContainer.setAttribute('data-category', item.category || '');
-           panelContainer.setAttribute('data-biomarkers', item.biomarkers ? item.biomarkers.join(' ') : '');
-           panelContainer.id = `panel-${index}`;
-           
-           // Create panel content
-           const panelContent = document.createElement('div');
-           panelContent.classList.add('panel-content');
-           panelContent.innerHTML = item.paragraph;
-           
-           panelContainer.appendChild(panelContent);
-           paragraphContainer.appendChild(panelContainer);
-       });
-       
-       // Add click event listeners to biomarker elements
-       document.addEventListener('click', function(e) {
-           if (e.target.classList.contains('biomarker-clickable')) {
-               const biomarkerName = e.target.getAttribute('data-biomarker');
-               const loincCode = e.target.getAttribute('data-loinc');
-               const panelContainer = e.target.closest('.panel-container');
-               
-               toggleBiomarkerDetails(e.target, biomarkerName, { loinc: loincCode }, panelContainer);
-           }
-       });
-       
-       console.log(`Rendered ${allContentData.length} paragraphs`);
+   // Modified renderInitialParagraphs function - only the relevant part
+    function renderInitialParagraphs() {
+        paragraphContainer.innerHTML = '';
+        
+        allContentData.forEach((item, index) => {
+            // Create panel container
+            const panelContainer = document.createElement('div');
+            panelContainer.classList.add('panel-container', 'content-paragraph', 'hide');
+            panelContainer.setAttribute('data-keyword', item.keyword);
+            panelContainer.setAttribute('data-category', item.category || '');
+            panelContainer.setAttribute('data-biomarkers', item.biomarkers ? item.biomarkers.join(' ') : '');
+            panelContainer.id = `panel-${index}`;
+            
+            // Create panel content
+            const panelContent = document.createElement('div');
+            panelContent.classList.add('panel-content');
+            panelContent.innerHTML = item.paragraph;
+            
+            panelContainer.appendChild(panelContent);
+            paragraphContainer.appendChild(panelContainer);
+        });
+        
+        // Add click event listeners to biomarker elements AND apply conditional styling
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('biomarker-clickable')) {
+                const biomarkerName = e.target.getAttribute('data-biomarker');
+                const loincCode = e.target.getAttribute('data-loinc');
+                const panelContainer = e.target.closest('.panel-container');
+                
+                toggleBiomarkerDetails(e.target, biomarkerName, { loinc: loincCode }, panelContainer);
+            }
+        });
+        
+        // Apply conditional styling to all biomarker elements
+        const allBiomarkerElements = document.querySelectorAll('.biomarker-clickable');
+        allBiomarkerElements.forEach(element => {
+            const biomarkerName = element.getAttribute('data-biomarker');
+            const loincCode = element.getAttribute('data-loinc');
+            
+            if (!isValidBiomarker(biomarkerName, loincCode)) {
+                element.classList.add('invalid-biomarker');
+            }
+        });
+        
+        console.log(`Rendered ${allContentData.length} paragraphs`);
 
-       initializeBiomarkerSearch();
-   }
+        initializeBiomarkerSearch();
+    }
 
    // Make functions globally available
    window.expandAllBiomarkers = expandAllBiomarkers;
