@@ -20,34 +20,46 @@ document.addEventListener('DOMContentLoaded', function() {
             <style>
 
                 .panel-container {
-                    background-color: #f3f3f3ff;
+                    background-color: #d7f5dc;
+                    border: 2px solid #28a745;
+                    border-radius: 8px;
+                    padding: 16 px 20px;
                     margin-bottom: 20px;
-                    border: 1px solid #ddd;
-                    border-radius: 1px;
-                    overflow: hidden;
+                    width: 620px;
                 }
 
                 .panel-header {
                     display: flex;
                     align-items: center;
                     gap: 10px;
-                    margin-bottom: 10px;
+                    margin-bottom: 4px;
                 }
+
+                .panel-title {
+                    color: #28a745;
+                    font-size: 20px;
+                    font-weight: bold;
+                    margin: 0;
+                }
+
 
                 .panel-label {
                     background-color: #28a745;
                     color: white;
-                    padding: 2px 8px;
-                    border-radius: 1px;
-                    font-size: 11px;
+                    padding: 3px 10px;
+                    border-radius: 12px;
+                    font-size: 12px;
                     font-weight: bold;
-                    text-transform: uppercase;
+                    margin-right: 8px;
                 }
+
                 
                 .panel-content {
-                    padding: 15px;
                     background-color: #fff;
+                    padding: 12px 16px;
+                    border-radius: 4px;
                 }
+
                 
                 .expand-all-button {
                     background-color: #28a745;
@@ -91,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     margin-bottom: 15px;
                     padding: 12px;
                     border-left: 4px solid #007bff;
-                    background-color: #f8f9fa;
+                    background-color: #f0f8ff;
                     border-radius: 4px;
                     display: none;
                     animation: slideDown 0.3s ease-out;
@@ -183,29 +195,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     font-weight: bold;
                 }
 
-                .expand-panels-button {
-                background-color: #28a745;
-                color: white;
-                padding: 6px 12px;
-                border: none;
-                border-radius: 4px;
-                font-size: 13px;
-                cursor: pointer;
-                transition: background-color 0.3s;
+
+                .panel-toggle-header {
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: #28a745;
+                    user-select: none;
+                    gap: 6px;
+                    margin-bottom: 8px;
                 }
 
-                .expand-panels-button:hover {
-                background-color: #218838;
+                .panel-toggle-header:hover .panel-toggle-text {
+                    text-decoration: underline;
                 }
+
+                .panel-toggle-arrow {
+                    font-size: 14px;
+                }
+
 
                 .panel-container {
-                max-width: 800px;
+                max-width: 620px;
                 margin: 0 auto 20px auto;
                 transition: max-width 0.3s ease;
                 }
 
                 .panel-container.panel-expanded {
-                    max-width: 1200px; /* matches the wider biomarker result width */
+                    max-width: 1200px; 
                 }
 
                 .panel-wrapper {
@@ -214,21 +233,57 @@ document.addEventListener('DOMContentLoaded', function() {
                     transition: all 0.3s ease;
                 }
 
-                .panel-container {
-                    width: 800px;
-                    transition: width 0.3s ease;
-                }
-
-                .panel-container.panel-expanded {
-                    width: 1200px;
-                }
-
                 .biomarker-details-container {
                     max-width: 100%;
                     transition: all 0.3s ease;
                 }
 
+                               
+                .associated-panel-container {
+                    margin-bottom: 10px;
+                    list-style: none;
+                }
 
+                .associated-panel-content {
+                    border: 1px solid #ccc;
+                    border-radius: 8px;
+                    padding: 12px;
+                    background-color: #fff;
+                }
+
+                .associated-panel-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 6px;
+                }
+
+                .associated-panel-label {
+                    background-color: #28a745;
+                    color: white;
+                    padding: 3px 10px;
+                    border-radius: 12px;
+                    font-size: 12px;
+                    font-weight: bold;
+                }
+
+                .associated-panel-title {
+                    font-weight: bold;
+                    font-size: 17px;
+                    color: #333;
+                }
+
+                .associated-panel-meta {
+                    font-size: 14px;
+                    color: #555;
+                    margin: 0;
+                }
+
+                .panel-content h3 {
+                    margin: 0;
+                    font-size: 20px;
+                    font-weight: bold;
+                }
 
 }
             </style>
@@ -401,21 +456,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const panelListId = `${elementId}-panel-list`;
             detailsContent += `
                 <div class="panels-using-biomarker" style="margin-top: 15px;">
-                    <button class="expand-panels-button" onclick="togglePanelList('${panelListId}', this)">
-                        Show Panels Using This Biomarker (${panelsUsing.length})
-                    </button>
+                    <div class="panel-toggle-header" onclick="togglePanelList('${panelListId}', this)">
+                        <span class="panel-toggle-text">Panels Using This Biomarker (${panelsUsing.length})</span>
+                        <span class="panel-toggle-arrow">▼</span>
+                    </div>
                     <div id="${panelListId}" style="display: none; margin-top: 10px;">
-                        <h4>Panels Using This Biomarker (${panelsUsing.length})</h4>
-                        <ul style="list-style: none; padding-left: 0;">`;
+                        <ul style="list-style: none; padding-left: 0;">
+            `;
 
-            panelsUsing.forEach(panel => {
+            panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers }) => {
                 detailsContent += `
-                            <li style="margin-bottom: 6px;">
-                                <div style="padding: 8px 12px; background: #eaf5ea; border: 1px solid #28a745; border-radius: 6px;">
-                                    <strong style="color: #28a745;">${panel.keyword}</strong>
-                                    ${panel.testNumber ? `<span style="color: #555; font-size: 0.85em;"> | Test #: ${panel.testNumber}</span>` : ''}
-                                </div>
-                            </li>`;
+                    <li class="associated-panel-container">
+                        <div class="associated-panel-content">
+                            <div class="associated-panel-header">
+                                <span class="associated-panel-label">PANEL</span>
+                                <span class="associated-panel-title">${keyword}</span>
+                            </div>
+                            <p class="associated-panel-meta">
+                                ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
+                                ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
+                                ${biomarkers?.length || 0} biomarkers
+                            </p>
+                        </div>
+                    </li>`;
             });
 
             detailsContent += `
@@ -830,13 +893,18 @@ document.addEventListener('DOMContentLoaded', function() {
        return biomarkers;
    }
 
-window.togglePanelList = function(panelListId, buttonElement) {
+window.togglePanelList = function(panelListId, headerElement) {
     const panelList = document.getElementById(panelListId);
     const isVisible = panelList.style.display === 'block';
 
     panelList.style.display = isVisible ? 'none' : 'block';
-    buttonElement.textContent = isVisible ? 'Show Panels Using This Biomarker' : 'Hide Panels Using This Biomarker';
+
+    const arrow = headerElement.querySelector('.panel-toggle-arrow');
+    if (arrow) {
+        arrow.textContent = isVisible ? '▼' : '▲';
+    }
 };
+
 
 
 // Global variable to store biomarker-to-panels mapping
