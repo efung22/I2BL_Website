@@ -1,18 +1,79 @@
 <!DOCTYPE html>
-<html lang="en"> <head>
+<html lang="en"> 
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>I2BL</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="script.js" defer></script>
+    <style>
+        .logo {
+            display: block;
+            margin: 0 auto 20px auto;
+            max-width: 200px;
+        }
 
-    <title>I2BL</title>
-    <img src = "logo.png" alt="I2BL Logo" class="logo" />
+        .toggle-group {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .toggle-group label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-group input[type="checkbox"] {
+            margin-right: 6px;
+            transform: scale(1.2);
+        }
+
+        .search-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #searchInput {
+            width: 300px;
+            padding: 8px;
+            font-size: 16px;
+        }
+
+        #searchButton {
+            padding: 8px 16px;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+    </style>
 </head>
 <body>
-    <h1>I2BL Panel to Biomarker</h1>
-    <div class = "search-container">
-        <input type="text" id="searchInput" placeholder="Search panel name" />
+    <img src="logo.png" alt="I2BL Logo" class="logo" />
+
+    <h1 style="text-align: center;">I2BL Panel to Biomarker</h1>
+
+    <!-- Toggle Section -->
+    <div class="toggle-group">
+    <label>
+        <input type="radio" name="searchMode" id="searchModeAll" value="all" checked>
+        Search Panels and Biomarkers
+    </label>
+    <label>
+        <input type="radio" name="searchMode" id="searchModePanels" value="panels">
+        Search Panels Only
+    </label>
+    </div>
+
+
+    <!-- Search Bar -->
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search panel name or biomarker..." />
         <button id="searchButton">Search</button>
     </div>
 
+    <!-- Content Container -->
     <div id="paragraphContainer"></div>
 </body>
 </html>
