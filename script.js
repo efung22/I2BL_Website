@@ -43,102 +43,13 @@ document.addEventListener('DOMContentLoaded', function() {
         location.reload();
     };
 
+    // This function can be empty or removed if all styles are in style.css directly
     function addExpandableStyles() {
-        const expandableStyles = `
-            <style>
-                .panel-container {
-                    background-color: #d7f5dc;
-                    border: 2px solid #28a745;
-                    border-radius: 8px;
-                    padding: 16px 20px;
-                    margin-bottom: 20px;
-                    width: 620px;
-                }
-                .panel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
-                .panel-title { color: #28a745; font-size: 20px; font-weight: bold; margin: 0; }
-                .panel-label { background-color: #28a745; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-right: 8px; }
-                .panel-content { background-color: #fff; padding: 12px 16px; border-radius: 4px; }
-                .expand-all-button { background-color: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-top: 10px; transition: background-color 0.3s; }
-                .expand-all-button:hover { background-color: #218838; }
-                .collapse-all-button { background-color: #2874e8ff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-top: 10px; margin-left: 10px; transition: background-color 0.3s; }
-                .collapse-all-button:hover { background-color: #0f3884ff; }
-                .biomarker-details-container { margin-top: 15px; padding-left: 20px; }
-                .biomarker-detail-expanded { margin-bottom: 15px; padding: 12px; border-left: 4px solid #007bff; background-color: #f0f8ff; border-radius: 4px; display: none; animation: slideDown 0.3s ease-out; }
-                .biomarker-detail-expanded.invalid-biomarker { border-left: 4px solid #dc3545; background-color: #ffeaea; }
-                .biomarker-detail-expanded.show { display: block; }
-                @keyframes slideDown {
-                    from { opacity: 0; max-height: 0; padding-top: 0; padding-bottom: 0; }
-                    to { opacity: 1; max-height: 500px; padding-top: 12px; padding-bottom: 12px; }
-                }
-                .biomarker-detail-expanded h4 { margin: 0 0 10px 0; color: #333; font-size: 16px; }
-                .detail-item { margin: 5px 0; display: flex; align-items: flex-start; }
-                .detail-label { font-weight: bold; color: #555; min-width: 120px; margin-right: 10px; }
-                .detail-value { flex: 1; }
-                .detail-link { color: #007bff; text-decoration: none; }
-                .detail-link:hover { text-decoration: underline; }
-                .biomarker-clickable { color: #007bff; cursor: pointer; text-decoration: underline; transition: color 0.2s; }
-                .biomarker-clickable:hover { color: #0056b3; }
-                .biomarker-clickable.expanded { color: #28a745; font-weight: bold; }
-                .biomarker-clickable.invalid-biomarker { color: #dc3545; }
-                .biomarker-clickable.invalid-biomarker:hover { color: #c82333; }
-                .biomarker-clickable.invalid-biomarker.expanded { color: #dc3545; font-weight: bold; }
-                .panel-toggle-header { cursor: pointer; display: flex; align-items: center; font-size: 16px; font-weight: bold; color: #28a745; user-select: none; gap: 6px; margin-bottom: 8px; }
-                .panel-toggle-header:hover .panel-toggle-text { text-decoration: underline; }
-                .panel-toggle-arrow { font-size: 14px; }
-                .panel-container { max-width: 620px; margin: 0 auto 20px auto; transition: max-width 0.3s ease; }
-                .panel-container.panel-expanded { max-width: 1200px; }
-                .panel-wrapper { display: flex; justify-content: center; transition: all 0.3s ease; }
-                .biomarker-details-container { max-width: 100%; transition: all 0.3s ease; }
-                .associated-panel-container { margin-bottom: 10px; list-style: none; }
-                .associated-panel-content { border: 1px solid #ccc; border-radius: 8px; padding: 12px; background-color: #fff; }
-                .associated-panel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-                .associated-panel-label { background-color: #28a745; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; }
-                .associated-panel-title { font-weight: bold; font-size: 17px; color: #333; }
-                .associated-panel-meta { font-size: 14px; color: #555; margin: 0; }
-                .panel-content h3 { margin: 0; font-size: 20px; font-weight: bold; }
-                .panel-container {
-                    border: 2px solid #28a745;
-                    background: #f0f8f0;
-                    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.2);
-                }
-                .panel-container .panel-content h3 {
-                    color: #28a745;
-                    margin-top: 0;
-                    display: flex;
-                    align-items: center;
-                }
-                .panel-container .panel-content h3:before {
-                    content: "PANEL";
-                    font-size: 11px;
-                    font-weight: bold;
-                    background: #28a745;
-                    color: white;
-                    padding: 4px 8px;
-                    border-radius: 12px;
-                    margin-right: 15px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                }
-                .content-paragraph.hide {
-                    display: none;
-                }
-                .content-paragraph:not(.hide) {
-                    display: block;
-                }
-                .search-results-summary {
-                    background: #e9ecef;
-                    padding: 10px 15px;
-                    border-radius: 6px;
-                    margin-bottom: 20px;
-                    font-size: 0.9em;
-                    color: #666;
-                }
-            </style>
-        `;
-        document.head.insertAdjacentHTML('beforeend', expandableStyles);
+        // All relevant styles are now in style.css directly
     }
 
-    // --- DELETED: addBiomarkerSearchStyles() function ---
+    // --- DELETED: addBiomarkerSearchStyles() function (as blue boxes are removed) ---
+
 
     function isValidBiomarker(biomarkerName, loincCode) {
         if (biomarkerName.toLowerCase().includes('comment')) {
@@ -310,7 +221,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div id="${panelListId}" style="display: none; margin-top: 10px;">
                         <ul style="list-style: none; padding-left: 0;">
             `;
-
             panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers }) => {
                 detailsContent += `
                     <li class="associated-panel-container">
@@ -327,7 +237,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </li>`;
             });
-
             detailsContent += `
                         </ul>
                     </div>
@@ -340,14 +249,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function expandAllBiomarkers(panelContainer) {
         const biomarkerElements = panelContainer.querySelectorAll('.biomarker-clickable');
         let anyExpanded = false;
-
         biomarkerElements.forEach(biomarkerElement => {
             const biomarkerName = biomarkerElement.getAttribute('data-biomarker');
             const loincCode = biomarkerElement.getAttribute('data-loinc');
             const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
             
             let detailsContainer = document.getElementById(biomarkerKey);
-
             if (!detailsContainer) {
                 toggleBiomarkerDetails(biomarkerElement, biomarkerName, { loinc: loincCode }, panelContainer);
                 anyExpanded = true;
@@ -357,7 +264,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 anyExpanded = true;
             }
         });
-
         if (anyExpanded) {
             panelContainer.classList.add('panel-expanded');
         }
@@ -366,7 +272,6 @@ document.addEventListener('DOMContentLoaded', function() {
     function collapseAllBiomarkers(panelContainer) {
         const biomarkerElements = panelContainer.querySelectorAll('.biomarker-clickable');
         let anyCollapsed = false;
-
         biomarkerElements.forEach(biomarkerElement => {
             const biomarkerName = biomarkerElement.getAttribute('data-biomarker');
             const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
@@ -378,7 +283,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 anyCollapsed = true;
             }
         });
-
         if (anyCollapsed) {
             panelContainer.classList.remove('panel-expanded');
         }
@@ -388,7 +292,6 @@ document.addEventListener('DOMContentLoaded', function() {
         showSpinner();
         try {
             console.log('Loading data...');
-            
             const response = await fetch(APPS_SCRIPT_URL);
             
             if (!response.ok) {
@@ -601,7 +504,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return -1;
     }
 
-    // --- DELETED: parseBiomarkersList() function ---
+    // --- DELETED: parseBiomarkersList() function (appears unused) ---
 
     window.togglePanelList = function(panelListId, headerElement) {
         const panelList = document.getElementById(panelListId);
@@ -653,68 +556,64 @@ document.addEventListener('DOMContentLoaded', function() {
         return matchingBiomarkers;
     }
 
-    // --- DELETED: createBiomarkerResult() function ---
-    // --- DELETED: toggleBiomarkerExpansion() function ---
-    // --- DELETED: togglePanelInBiomarkerView() function ---
+    // --- DELETED: createBiomarkerResult() function (responsible for top-level blue boxes) ---
+    // --- DELETED: toggleBiomarkerExpansion() function (for top-level blue boxes) ---
+    // --- DELETED: togglePanelInBiomarkerView() function (for panels nested in top-level blue boxes) ---
 
-    // --- THE ONLY FILTERING FUNCTION REMAINING (Corrected and simplified) ---
+    // --- filterPanelsOnly(): Displays only panels, searches by panel name/category/biomarker name within panels ---
     function filterPanelsOnly() {
         const query = searchInput.value.trim().toLowerCase();
-
-        // Clear everything first, including initial prompt and previous search results
-        paragraphContainer.innerHTML = '';
+        
+        paragraphContainer.innerHTML = ''; // Clear everything first
         document.querySelectorAll('#search-results-summary, #noResultsMessage, #initialPrompt')
             .forEach(el => el.remove());
 
-        // Handle empty query: show the initial prompt
-        if (query === '') {
+        if (query === '' && !dataLoaded) {
             paragraphContainer.innerHTML = `
                 <p id="initialPrompt" style="text-align: center; color: #666; font-style: italic; margin-top: 30px;">
                     Click 'Search' or start typing to load data and find panels/biomarkers.
                 </p>
             `;
-            return; // Exit, no search to perform
+            return;
+        }
+        if (query === '' && dataLoaded) { // If data loaded and query empty, just clear and return (no results)
+            return;
         }
 
         const filteredPanels = allContentData.filter(item => {
             const keyword = item.keyword || '';
             const category = item.category || '';
-            const biomarkers = (item.biomarkers || []).join(' '); // Include biomarkers for search within panels
+            const biomarkers = (item.biomarkers || []).join(' '); // Search within biomarkers in panels
 
             return keyword.includes(query) || category.includes(query) || biomarkers.includes(query);
         });
 
         if (filteredPanels.length > 0) {
-            // Append a summary for results
             const summaryDiv = document.createElement('div');
             summaryDiv.id = 'search-results-summary';
             summaryDiv.className = 'search-results-summary';
             summaryDiv.innerHTML = `
-                <strong>Search Results for "${query}":</strong>
+                <strong>Search Results for "${query}":</strong> 
                 ${filteredPanels.length} panel(s) found
             `;
-            paragraphContainer.appendChild(summaryDiv); // Append before panels
+            paragraphContainer.appendChild(summaryDiv);
 
             filteredPanels.forEach((data, index) => {
                 const panelWrapper = document.createElement('div');
                 panelWrapper.classList.add('panel-wrapper');
-
                 const panelContainer = document.createElement('div');
                 panelContainer.classList.add('panel-container', 'content-paragraph');
                 panelContainer.setAttribute('data-keyword', data.keyword);
                 panelContainer.setAttribute('data-category', data.category || '');
                 panelContainer.setAttribute('data-biomarkers', data.biomarkers ? data.biomarkers.join(' ') : '');
                 panelContainer.id = `panel-${index}`;
-
                 const panelContent = document.createElement('div');
                 panelContent.classList.add('panel-content');
-                panelContent.innerHTML = data.paragraph; // This contains the actual panel HTML structure
-
+                panelContent.innerHTML = data.paragraph;
                 panelContainer.appendChild(panelContent);
                 panelWrapper.appendChild(panelContainer);
                 paragraphContainer.appendChild(panelWrapper);
 
-                // Apply biomarker styling for items within this panel after it's in DOM
                 const panelBiomarkerElements = panelContainer.querySelectorAll('.biomarker-clickable');
                 panelBiomarkerElements.forEach(element => {
                     const biomarkerName = element.getAttribute('data-biomarker');
@@ -738,20 +637,115 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- Unified filterContent function (simplified as no more radio buttons) ---
+    // --- filterContentWithBiomarkers(): Now only displays panels, but with a broader search scope ---
+    // Its display logic is now identical to filterPanelsOnly, but its *filter criteria* is what distinguishes it.
+    function filterContentWithBiomarkers() {
+        const query = searchInput.value.trim().toLowerCase();
+        
+        paragraphContainer.innerHTML = ''; // Clear existing content and messages
+        document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, #initialPrompt')
+            .forEach(el => el.remove());
+
+        if (query === '' && !dataLoaded) {
+            paragraphContainer.innerHTML = `
+                <p id="initialPrompt" style="text-align: center; color: #666; font-style: italic; margin-top: 30px;">
+                    Click 'Search' or start typing to load data and find panels/biomarkers.
+                </p>
+            `;
+            return;
+        }
+        if (query === '' && dataLoaded) {
+            return;
+        }
+        
+        // This function will consider biomarker names in the search, even though it only displays panels.
+        // We still need findMatchingBiomarkers to check if the query matched a biomarker at all for the count.
+        const matchingBiomarkersForCount = findMatchingBiomarkers(query); 
+        
+        const filteredPanels = allContentData.filter(item => {
+            const keyword = item.keyword || '';
+            const category = item.category || '';
+            const biomarkersInPanel = (item.biomarkers || []).join(' '); // Search within biomarkers in panels
+            
+            // Search criteria: panel keyword, category, OR any biomarker name within the panel
+            return keyword.includes(query) || category.includes(query) || biomarkersInPanel.includes(query);
+        });
+        
+        if (filteredPanels.length > 0) {
+            const summaryDiv = document.createElement('div');
+            summaryDiv.id = 'search-results-summary';
+            summaryDiv.className = 'search-results-summary';
+            summaryDiv.innerHTML = `
+                <strong>Search Results for "${query}":</strong> 
+                ${filteredPanels.length} panel(s) found (including those matching biomarkers)
+            `;
+            // Optional: If you want to explicitly state how many biomarker names matched, even if not displayed:
+            // `<strong>Search Results for "${query}":</strong> ${matchingBiomarkersForCount.length} biomarker matches and ${filteredPanels.length} panel(s) found`
+            paragraphContainer.appendChild(summaryDiv);
+
+            filteredPanels.forEach((data, index) => {
+                const panelWrapper = document.createElement('div');
+                panelWrapper.classList.add('panel-wrapper');
+                const panelContainer = document.createElement('div');
+                panelContainer.classList.add('panel-container', 'content-paragraph');
+                panelContainer.setAttribute('data-keyword', data.keyword);
+                panelContainer.setAttribute('data-category', data.category || '');
+                panelContainer.setAttribute('data-biomarkers', data.biomarkers ? data.biomarkers.join(' ') : '');
+                panelContainer.id = `panel-${index}`;
+                const panelContent = document.createElement('div');
+                panelContent.classList.add('panel-content');
+                panelContent.innerHTML = data.paragraph;
+                panelContainer.appendChild(panelContent);
+                panelWrapper.appendChild(panelContainer);
+                paragraphContainer.appendChild(panelWrapper);
+                
+                const panelBiomarkerElements = panelContainer.querySelectorAll('.biomarker-clickable');
+                panelBiomarkerElements.forEach(element => {
+                    const biomarkerName = element.getAttribute('data-biomarker');
+                    const loincCode = element.getAttribute('data-loinc');
+                    if (!isValidBiomarker(biomarkerName, loincCode)) {
+                        element.classList.add('invalid-biomarker');
+                    } else {
+                        element.classList.remove('invalid-biomarker');
+                    }
+                });
+            });
+
+        } else {
+            const noResultsDiv = document.createElement('div');
+            noResultsDiv.id = 'noResultsMessage';
+            noResultsDiv.innerHTML = `
+                <p style="text-align: center; color: #666; font-style: italic;">
+                    No matching results found for "${query}"<br>
+                    <small>Try searching for panel names or biomarker names</small>
+                </p>
+            `;
+            paragraphContainer.appendChild(noResultsDiv);
+        }
+    }    
+
+    // --- Unified filterContent function to dispatch based on radio button ---
     function filterContent() {
-        filterPanelsOnly(); // Always call filterPanelsOnly now
+        const searchModeAll = document.getElementById('searchModeAll');
+        if (searchModeAll && searchModeAll.checked) {
+            filterContentWithBiomarkers(); // Uses the function that searches broad, but only displays panels
+        } else {
+            filterPanelsOnly(); // Uses the function that searches panel-specific fields and displays panels
+        }
     }
 
-    // Make functions globally available for inline HTML onclicks
+
     window.expandAllBiomarkers = expandAllBiomarkers;
     window.collapseAllBiomarkers = collapseAllBiomarkers;
     window.togglePanelList = togglePanelList;
-    window.filterContent = filterContent; // Make it globally accessible
+    // Removed/Confirmed removed: window.toggleBiomarkerExpansion (for blue boxes)
+    // Removed/Confirmed removed: window.togglePanelInBiomarkerView (for blue boxes)
+    window.filterContent = filterContent;
 
 
     // --- Core Initialization Logic ---
-    addExpandableStyles();
+    addExpandableStyles(); // This function can remain, but its content is handled by style.css
+
 
     // 2. Register Service Worker (only once)
     if ('serviceWorker' in navigator) {
@@ -773,7 +767,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!dataLoaded) {
             await loadContentAndProcessData();
         }
-        filterContent();
+        filterContent(); // Call filterContent to apply the search mode
     });
 
     searchInput.addEventListener('input', function() {
@@ -789,11 +783,18 @@ document.addEventListener('DOMContentLoaded', function() {
     searchInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             if (searchTimeout) clearTimeout(searchTimeout);
-            searchButton.click();
+            searchButton.click(); // Simulate a click on the search button
         }
     });
 
-    // Removed radio button listeners as they are removed from HTML.
+    // Attach listeners for radio button changes
+    const radioAll = document.getElementById('searchModeAll');
+    const radioPanels = document.getElementById('searchModePanels');
+
+    if (radioAll && radioPanels) {
+        radioAll.addEventListener('change', filterContent);
+        radioPanels.addEventListener('change', filterContent);
+    }
 
     document.addEventListener('click', function(e) {
         if (e.target.classList.contains('biomarker-clickable')) {
