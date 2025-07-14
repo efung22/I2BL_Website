@@ -1,0 +1,122 @@
+body {
+    font-family: Arial;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 50px;
+    background-color: rgb(191, 223, 255)
+}
+
+#logo{ /* Your logo ID is 'logo', but in HTML it's a class 'logo'
+           If you want to style it via ID, change HTML to <img id="logo"> */
+    width: 150px;
+    height: auto;
+    margin-bottom: 0px;
+}
+
+.search-container {
+    margin-bottom: 20px;
+}
+
+#searchInput {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    width: 300px;
+    font-size: 16px;
+}
+
+#searchButton {
+    padding: 10px 15px;
+    background-color: #3570b0;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+#searchButton:hover {
+    background-color: #5497de;
+}
+
+/* #contentList is likely unused now, can be removed if not needed for other elements */
+#contentList {
+    list-style: none;
+    padding: 0;
+    width: 300px;
+    border: 1px solid #eee;
+    border-radius: 5px;
+}
+
+#contentList li {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+#contentList li:last-child {
+    border-bottom: none;
+}
+
+/* #biomarkerInfo is likely unused now, can be removed */
+#biomarkerInfo {
+    width: 700px; 
+    max-width: 95%; 
+    margin-top: 30px;
+}
+
+.content-paragraph {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    width: 600px; /* Adjust as needed */
+    max-width: 90%;
+}
+
+.content-paragraph.hide {
+    display: none;
+}
+
+#contentList li.hide { /* This might be redundant if #contentList is removed */
+    display: none;
+}
+
+#noResultsMessage {
+    text-align: center;
+    color: #888;
+    margin-top: 20px;
+    font-size: 1.1em;
+}
+
+/* Spinner Container */
+.spinner-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    margin-top: 50px;
+    color: #555;
+    font-size: 1.1em;
+}
+
+/* The Spinner itself */
+.spinner {
+    border: 8px solid #f3f3f3; /* Light grey */
+    border-top: 8px solid #3498db; /* Blue */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite; /* Spin animation */
+    margin-bottom: 15px;
+}
+
+/* Spinner Animation */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* REMOVED THE EXTRA CLOSING BRACE HERE */
