@@ -218,13 +218,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
                 .panel-container {
-                max-width: 620px;
+                width: 620px;
                 margin: 0 auto 20px auto;
                 transition: max-width 0.3s ease;
                 }
 
                 .panel-container.panel-expanded {
-                    max-width: 1200px; 
+                    width: 1200px; 
                 }
 
                 .panel-wrapper {
@@ -525,27 +525,31 @@ document.addEventListener('DOMContentLoaded', function() {
 
    // Collapse all biomarkers for a panel
    function collapseAllBiomarkers(panelContainer) {
-    const biomarkerElements = panelContainer.querySelectorAll('.biomarker-clickable');
-    let anyCollapsed = false;
+        const biomarkerElements = panelContainer.querySelectorAll('.biomarker-clickable');
+        let anyCollapsed = false;
 
-    biomarkerElements.forEach(biomarkerElement => {
-        const biomarkerName = biomarkerElement.getAttribute('data-biomarker');
-        const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
-        
-        const detailsContainer = document.getElementById(biomarkerKey);
-        if (detailsContainer && detailsContainer.classList.contains('show')) {
-            // Hide only if visible
-            detailsContainer.classList.remove('show');
+        biomarkerElements.forEach(biomarkerElement => {
+            const biomarkerName = biomarkerElement.getAttribute('data-biomarker');
+            const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
+
+            const detailsContainer = document.getElementById(biomarkerKey);
+
+            // Always remove highlight from biomarker
             biomarkerElement.classList.remove('expanded');
-            anyCollapsed = true;
-        }
-    });
 
-    // Remove expansion styling only if any were collapsed
-    if (anyCollapsed) {
-        panelContainer.classList.remove('panel-expanded');
+            // Hide details if visible
+            if (detailsContainer && detailsContainer.classList.contains('show')) {
+                detailsContainer.classList.remove('show');
+                anyCollapsed = true;
+            }
+        });
+
+        // Remove expansion class if anything was collapsed
+        if (anyCollapsed) {
+            panelContainer.classList.remove('panel-expanded');
+        }
     }
-}
+
 
 
    // Cache management functions
