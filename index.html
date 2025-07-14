@@ -1,18 +1,46 @@
 <!DOCTYPE html>
-<html lang="en"> <head>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>I2BL | Panel to Biomarker</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <link rel="stylesheet" href="styles.css" />
     <script src="script.js" defer></script>
-
-    <title>I2BL</title>
-    <img src = "logo.png" alt="I2BL Logo" class="logo" />
 </head>
 <body>
-    <h1>I2BL Panel to Biomarker</h1>
-    <div class = "search-container">
-        <input type="text" id="searchInput" placeholder="Search panel name" />
-        <button id="searchButton">Search</button>
-    </div>
+    <header class="header-container">
+        <img src="logo.png" alt="I2BL Logo" class="logo" />
+        <h1>Panel to Biomarker</h1>
+    </header>
 
-    <div id="paragraphContainer"></div>
+    <main>
+        <div class="search-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Search for a panel by name or abbreviation..." />
+        </div>
+
+        <div id="resultsContainer">
+            </div>
+
+        <div id="initialMessage" class="info-message">
+            <p>Start typing in the search box above to find a panel.</p>
+        </div>
+
+        <div id="noResultsMessage" class="info-message" style="display: none;">
+            <p>No results found. Try checking your spelling or using a different term.</p>
+        </div>
+
+        <div id="loadingIndicator" class="info-message" style="display: none;">
+            <p>Loading data...</p>
+        </div>
+
+    </main>
 </body>
 </html>
