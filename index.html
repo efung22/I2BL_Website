@@ -7,16 +7,30 @@
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
     <style>
-        /* These inline styles are fine, but ensure the main style.css is linked correctly */
         .logo {
             display: block;
             margin: 0 auto 20px auto;
             max-width: 200px;
         }
 
-        /* Removed .toggle-group and its contents as per your request to only show panels */
-        /* If you intended to keep the "Search Panels Only" radio button, put it back here
-           but ensure it's type="radio" and linked to by script.js */
+        .toggle-group {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .toggle-group label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        /* IMPORTANT: Ensure this is type="radio" */
+        .toggle-group input[type="radio"] { 
+            margin-right: 6px;
+            transform: scale(1.2);
+        }
 
         .search-container {
             text-align: center;
@@ -40,6 +54,17 @@
     <img src="logo.png" alt="I2BL Logo" class="logo" />
 
     <h1 style="text-align: center;">I2BL Panel to Biomarker</h1>
+
+    <div class="toggle-group">
+        <label>
+            <input type="radio" name="searchMode" id="searchModeAll" value="all" checked>
+            Search Panels and Biomarkers
+        </label>
+        <label>
+            <input type="radio" name="searchMode" id="searchModePanels" value="panels">
+            Search Panels Only
+        </label>
+    </div>
 
     <div class="search-container">
         <input type="text" id="searchInput" placeholder="Search panel name or biomarker..." />
