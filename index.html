@@ -1,46 +1,79 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"> 
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>I2BL | Panel to Biomarker</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
+    <title>I2BL</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="script.js" defer></script>
+    <style>
+        .logo {
+            display: block;
+            margin: 0 auto 20px auto;
+            max-width: 200px;
+        }
+
+        .toggle-group {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .toggle-group label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .toggle-group input[type="checkbox"] {
+            margin-right: 6px;
+            transform: scale(1.2);
+        }
+
+        .search-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #searchInput {
+            width: 300px;
+            padding: 8px;
+            font-size: 16px;
+        }
+
+        #searchButton {
+            padding: 8px 16px;
+            font-size: 16px;
+            margin-left: 10px;
+        }
+    </style>
 </head>
 <body>
-    <header class="header-container">
-        <img src="logo.png" alt="I2BL Logo" class="logo" />
-        <h1>Panel to Biomarker</h1>
-    </header>
+    <img src="logo.png" alt="I2BL Logo" class="logo" />
 
-    <main>
-        <div class="search-wrapper">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="searchInput" placeholder="Search for a panel by name or abbreviation..." />
-        </div>
+    <h1 style="text-align: center;">I2BL Panel to Biomarker</h1>
 
-        <div id="resultsContainer">
-            </div>
+    <!-- Toggle Section -->
+    <div class="toggle-group">
+    <label>
+        <input type="radio" name="searchMode" id="searchModeAll" value="all" checked>
+        Search Panels and Biomarkers
+    </label>
+    <label>
+        <input type="radio" name="searchMode" id="searchModePanels" value="panels">
+        Search Panels Only
+    </label>
+    </div>
 
-        <div id="initialMessage" class="info-message">
-            <p>Start typing in the search box above to find a panel.</p>
-        </div>
 
-        <div id="noResultsMessage" class="info-message" style="display: none;">
-            <p>No results found. Try checking your spelling or using a different term.</p>
-        </div>
+    <!-- Search Bar -->
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search panel name or biomarker..." />
+        <button id="searchButton">Search</button>
+    </div>
 
-        <div id="loadingIndicator" class="info-message" style="display: none;">
-            <p>Loading data...</p>
-        </div>
-
-    </main>
+    <!-- Content Container -->
+    <div id="paragraphContainer"></div>
 </body>
 </html>
