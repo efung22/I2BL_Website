@@ -852,7 +852,7 @@ document.addEventListener('DOMContentLoaded', function() {
            }
            
            contentData.push({
-               keyword: panelName.toLowerCase(),
+               keyword: panelName,
                paragraph: paragraphContent,
                url: url,
                cpt: cpt,
@@ -1091,7 +1091,8 @@ function createBiomarkerResult(biomarkerInfo, index) {
             <div class="panel-in-biomarker-view" data-panel-index="${panelRef.panelIndex}">
                 <div class="panel-name-clickable" onclick="togglePanelInBiomarkerView(${panelRef.panelIndex}, this)">
                     <span class="mini-panel-label"> PANEL</span>
-                    <span class="panel-name">${panelData.keyword.charAt(0).toUpperCase() + panelData.keyword.slice(1)}</span>
+                    <span class="panel-name">${panelData.displayName}</span>
+
                 </div>
                 <div class="panel-quick-info">
                     ${panelData.cpt ? `CPT: ${panelData.cpt}` : ''}${panelData.cpt && panelData.testNumber ? ' | ' : ''}${panelData.testNumber ? `Test #: ${panelData.testNumber}` : ''}${(panelData.cpt || panelData.testNumber) && panelData.biomarkers ? ' | ' : ''}${panelData.biomarkers ? `${panelData.biomarkers.length} biomarkers` : ''}
