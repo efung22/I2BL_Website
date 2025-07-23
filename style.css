@@ -7,8 +7,7 @@ body {
     background-color: rgb(191, 223, 255)
 }
 
-#logo{ /* Your logo ID is 'logo', but in HTML it's a class 'logo'
-           If you want to style it via ID, change HTML to <img id="logo"> */
+#logo{
     width: 150px;
     height: auto;
     margin-bottom: 0px;
@@ -40,7 +39,6 @@ body {
     background-color: #5497de;
 }
 
-/* #contentList is likely unused now, can be removed if not needed for other elements */
 #contentList {
     list-style: none;
     padding: 0;
@@ -58,7 +56,6 @@ body {
     border-bottom: none;
 }
 
-/* #biomarkerInfo is likely unused now, can be removed */
 #biomarkerInfo {
     width: 700px; 
     max-width: 95%; 
@@ -79,7 +76,7 @@ body {
     display: none;
 }
 
-#contentList li.hide { /* This might be redundant if #contentList is removed */
+#contentList li.hide {
     display: none;
 }
 
@@ -90,33 +87,29 @@ body {
     font-size: 1.1em;
 }
 
-/* Spinner Container */
-.spinner-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 30px;
-    margin-top: 50px;
-    color: #555;
-    font-size: 1.1em;
+.suggestions-dropdown {
+    position: absolute; /* Position relative to .search-container */
+    width: 300px; /* Match the width of your searchInput */
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-top: none; /* No top border as it sits right below the input */
+    border-radius: 0 0 5px 5px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    max-height: 200px; /* Limit height and add scrollbar if many suggestions */
+    overflow-y: auto;
+    z-index: 100; /* Ensure it's above other content */
+    display: none; /* Hidden by default */
 }
 
-/* The Spinner itself */
-.spinner {
-    border: 8px solid #f3f3f3; /* Light grey */
-    border-top: 8px solid #3498db; /* Blue */
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    animation: spin 1s linear infinite; /* Spin animation */
-    margin-bottom: 15px;
+.suggestion-item {
+    padding: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    color: #333;
+    text-align: left; /* Align text to the left within the dropdown */
 }
 
-/* Spinner Animation */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.suggestion-item:hover {
+    background-color: #f0f0f0;
 }
 
-/* REMOVED THE EXTRA CLOSING BRACE HERE */
