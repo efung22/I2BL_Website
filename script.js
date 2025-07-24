@@ -285,7 +285,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     font-weight: bold;
                 }
 
-}
+                .open-new-tab-icon {
+                    width: 18px;
+                    height: 18px;
+                    cursor: pointer;
+                    margin-left: auto;
+                    margin-top: 2px;
+                    filter: brightness(0) saturate(100%) invert(30%) sepia(95%) saturate(1732%) hue-rotate(82deg) brightness(95%) contrast(97%);
+                    transition: transform 0.2s;
+                }
+
+                .open-new-tab-icon:hover {
+                    transform: scale(1.2);
+                }
+
+
             </style>
         `;
         
@@ -467,18 +481,24 @@ document.addEventListener('DOMContentLoaded', function() {
             panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers }) => {
                 detailsContent += `
                     <li class="associated-panel-container">
-                        <div class="associated-panel-content">
-                            <div class="associated-panel-header">
-                                <span class="associated-panel-label">PANEL</span>
-                                <span class="associated-panel-title">${keyword}</span>
-                            </div>
-                            <p class="associated-panel-meta">
-                                ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
-                                ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
-                                ${biomarkers?.length || 0} biomarkers
-                            </p>
+                    <div class="associated-panel-content">
+                        <div class="associated-panel-header">
+                            <span class="associated-panel-label">PANEL</span>
+                            <span class="associated-panel-title">${keyword}</span>
+                            <img 
+                                src="open-tab.png" 
+                                class="open-new-tab-icon" 
+                                title="Open in new tab"
+                                onclick="openPanelInNewTab('${encodeURIComponent(keyword)}')"
+                            />
                         </div>
-                    </li>`;
+                        <p class="associated-panel-meta">
+                            ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
+                            ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
+                            ${biomarkers?.length || 0} biomarkers
+                        </p>
+                    </div>
+                </li>`;
             });
 
             detailsContent += `
@@ -1791,6 +1811,13 @@ function initializeBiomarkerSearch() {
    
    searchButton.addEventListener('click', filterContent);
 
+   window.openPanelInNewTab = function(panelKeyword) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const newUrl = `${baseUrl}?search=${panelKeyword}`;
+    window.open(newUrl, '_blank');
+    };
+
+
    // Real-time search with proper debouncing
    let searchTimeout;
    searchInput.addEventListener('input', function() {
@@ -1814,4 +1841,14 @@ function initializeBiomarkerSearch() {
            filterContent();
        }
    });
+
+
+   const params = new URLSearchParams(window.location.search);
+    const searchValue = params.get('search');
+    if (searchValue) {
+        searchInput.value = searchValue;
+        filterContent();
+    }
+
+
 });
