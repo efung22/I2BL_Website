@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>I2BL</title>
     <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js/dist/fuse.min.js"></script>
     <script src="script.js" defer></script>
     <style>
         .logo {
@@ -26,8 +27,7 @@
             user-select: none;
         }
 
-        /* IMPORTANT: Ensure this is type="radio" */
-        .toggle-group input[type="radio"] { 
+        .toggle-group input[type="checkbox"] {
             margin-right: 6px;
             transform: scale(1.2);
         }
@@ -48,6 +48,20 @@
             font-size: 16px;
             margin-left: 10px;
         }
+        .suggestion-message {
+            text-align: center;
+            color: #888;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .suggestion-message a {
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .suggestion-message a:hover {
+            color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -55,27 +69,27 @@
 
     <h1 style="text-align: center;">I2BL Panel to Biomarker</h1>
 
+    <!-- Toggle Section -->
     <div class="toggle-group">
-        <label>
-            <input type="radio" name="searchMode" id="searchModeAll" value="all" checked>
-            Search Panels and Biomarkers
-        </label>
-        <label>
-            <input type="radio" name="searchMode" id="searchModePanels" value="panels">
-            Search Panels Only
-        </label>
+    <label>
+        <input type="radio" name="searchMode" id="searchModeAll" value="all" checked>
+        Search Panels and Biomarkers
+    </label>
+    <label>
+        <input type="radio" name="searchMode" id="searchModePanels" value="panels">
+        Search Panels Only
+    </label>
     </div>
 
+
+    <!-- Search Bar -->
     <div class="search-container">
         <input type="text" id="searchInput" placeholder="Search panel name or biomarker..." />
         <button id="searchButton">Search</button>
+        <div id="suggestionsDropdown" class="suggestions-dropdown"></div>
     </div>
 
-    <div id="loadingSpinner" class="spinner-container" style="display: none;">
-        <div class="spinner"></div>
-        <p>Loading data... may take 15-20 seconds on first load</p>
-    </div>
-
+    <!-- Content Container -->
     <div id="paragraphContainer"></div>
 </body>
 </html>
