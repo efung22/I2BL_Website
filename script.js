@@ -928,32 +928,38 @@ function initializeFuse() {
 }
 
     function getSuggestions(query) {
-        let suggestions = [];
+        let suggestions = new Set(); // Use a Set directly to handle uniqueness and automatically remove duplicates
 
-        // Use the dedicated fuseWordSuggestions for word-level fuzzy matching
-        // This will give you "thyroid" when typing "thoyroid"
-        const wordLevelSuggestions = fuseWordSuggestions.search(query, { limit: 10 });
-        if (wordLevelSuggestions.length > 0) {
-            wordLevelSuggestions.forEach(result => {
-                suggestions.push(result.item.word);
-            });
-        }
+        // 1. Get individual word suggestions (e.g., "thyroid" from "thoyroid" or "thyr")
+        // Use the fuseWordSuggestions with its loose threshold (0.3-0.5) and minMatchCharLength (2-3)
+        const wordLevelSuggestions = fuseWordSuggestions.search(query, { limit: 10 }); // Adjust limit as needed
+        wordLevelSuggestions.forEach(result => {
+            suggestions.add(result.item.word);
+        });
 
-        // You can optionally also add full panel/biomarker names to the dropdown here if desired,
-        // but typically word-level corrections are prioritized for initial autocomplete.
-        // Example:
-        /*
-        const panelNameSuggestions = fusePanels.search(query, { limit: 3 }); // Fewer full names
-        panelNameSuggestions.forEach(result => suggestions.push(result.item.keyword));
+        // 2. Get full panel name suggestions
+        // Use fusePanels with a slightly looser threshold for suggestions (e.g., 0.4) than the strict search (0.1)
+        const panelNameSuggestions = fusePanels.search(query, { threshold: 0.4, limit: 10 }); // Adjust limit as needed
+        panelNameSuggestions.forEach(result => {
+            suggestions.add(result.item.keyword); // 'keyword' is the lowercase panel name
+        });
 
-        const biomarkerNameSuggestions = fuseBiomarkers.search(query, { limit: 3 }); // Fewer full names
-        biomarkerNameSuggestions.forEach(result => suggestions.push(result.item.biomarkerName));
-        */
+        // 3. Get full biomarker name suggestions
+        // Use fuseBiomarkers with a slightly looser threshold for suggestions (e.g., 0.4)
+        const biomarkerNameSuggestions = fuseBiomarkers.search(query, { threshold: 0.4, limit: 10 }); // Adjust limit as needed
+        biomarkerNameSuggestions.forEach(result => {
+            suggestions.add(result.item.biomarkerName); // 'biomarkerName' is the original case biomarker name
+        });
 
-        // Return unique suggestions
-        return [...new Set(suggestions)];
+        // Convert Set to Array for display
+        let finalSuggestions = Array.from(suggestions);
 
+        // Optional: You can sort these if you want a specific order (e.g., alphabetical, or by perceived relevance)
+        // For now, they'll appear in the order they were added (words, then panels, then biomarkers)
+        // finalSuggestions.sort(); // Uncomment to sort alphabetically
 
+        // Return the combined, unique suggestions
+        return finalSuggestions;
     }
 
     function hideSuggestions() {
@@ -1840,10 +1846,18 @@ window.filterContent = function() {
        }
    });
 
-   searchInput.addEventListener('blur', () => {
+   searchInput.addEventListener('blur', (event) => { // Added 'event' parameter
+        // Check if the relatedTarget (where focus is going) is within the suggestions dropdown
+        if (event.relatedTarget && suggestionsDropdown.contains(event.relatedTarget)) {
+            // If focus is going to a suggestion item, do NOT hide immediately.
+            // The click event on the suggestion item will handle the search and hiding.
+            return; 
+        }
+
+        // If focus is going elsewhere (not to a suggestion), then hide the suggestions
         setTimeout(() => {
             hideSuggestions();
-        }, 150); // Small delay
+        }, 150); // Small delay to allow click event to register if applicable
     });
 
 
