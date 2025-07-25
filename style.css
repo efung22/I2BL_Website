@@ -87,7 +87,6 @@ body {
     font-size: 1.1em;
 }
 
-<<<<<<< HEAD:styles.css
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap');
 
 .main-heading {
@@ -97,7 +96,6 @@ body {
     font-size: 2rem;
     color: #000000;
     margin-bottom: 20px;
-=======
 .suggestions-dropdown {
     position: absolute; /* Position relative to .search-container */
     width: 300px; /* Match the width of your searchInput */
@@ -122,5 +120,4 @@ body {
 
 .suggestion-item:hover {
     background-color: #f0f0f0;
->>>>>>> saisbackend:style.css
 }
