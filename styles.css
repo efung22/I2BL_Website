@@ -86,3 +86,14 @@ body {
     margin-top: 20px;
     font-size: 1.1em;
 }
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@600&display=swap');
+
+.main-heading {
+    text-align: center;
+    font-family: 'Times New Roman', Times, serif;
+    font-weight: bold;
+    font-size: 2rem;
+    color: #000000;
+    margin-bottom: 20px;
+}
