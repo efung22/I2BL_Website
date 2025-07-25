@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="en"> 
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>I2BL</title>
-    <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>I2BL</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js/dist/fuse.min.js"></script>
     <script src="script.js" defer></script>
     <style>
         .logo {
@@ -47,6 +52,20 @@
             font-size: 16px;
             margin-left: 10px;
         }
+        .suggestion-message {
+            text-align: center;
+            color: #888;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .suggestion-message a {
+            color: #007bff;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .suggestion-message a:hover {
+            color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -71,6 +90,7 @@
     <div class="search-container">
         <input type="text" id="searchInput" placeholder="Search panel name or biomarker..." />
         <button id="searchButton">Search</button>
+        <div id="suggestionsDropdown" class="suggestions-dropdown"></div>
     </div>
 
     <!-- Content Container -->
