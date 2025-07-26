@@ -7,17 +7,78 @@ document.addEventListener('DOMContentLoaded', function() {
    let biomarkerUrlMap = new Map();
 
    // Your Google Apps Script deployment URL (replace with your actual URL)
-   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzK3iC-xXKQubOI5Zr5Es7K2wivt9PTsXFdPoGFO4cKps12Alv8wUs_ILZd5KLjjbPgBQ/exec';
+   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCZJAfjsgECIOctZPQCPi8ASDDLQZlq8CGuSuPy3HCPk9qqS3H21AYn_55uybPq7o49Q/exec';
 
    // Cache configuration
    const CACHE_KEY = 'labcorp_data_cache';
    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+   // const CACHE_DURATION = 60 * 1000; // super short duration for debugging
 
 
     // Modified addExpandableStyles function - ADD these new styles to your existing styles
     function addExpandableStyles() {
         const expandableStyles = `
             <style>
+
+            /* Panel status messages */
+                .panel-status-message {
+                    position: absolute;
+                    top: 16px;
+                    right: 20px;
+                    font-size: 20px;
+                    font-weight: normal;
+                }
+
+                /* Colored panel containers */
+                .panel-container.green {
+                    background-color: #d7f5dc;
+                    border-color: #28a745;
+                }
+
+                .panel-container.yellow {
+                    background-color: #fff9d6;
+                    border-color: #ffc107;
+                }
+
+                .panel-container.red {
+                    background-color: #ffeaea;
+                    border-color: #dc3545;
+                }
+
+                .panel-status-wrapper {
+                    position: absolute;
+                    top: 16px;
+                    right: 20px;
+                    display: inline-block;
+                    cursor: default;
+                }
+
+                .panel-status-icon {
+                    font-size: 20px;
+                    display: inline-block;
+                }
+
+                .panel-tooltip {
+                    visibility: hidden;
+                    opacity: 0;
+                    background-color: #333;
+                    color: #fff;
+                    text-align: center;
+                    border-radius: 6px;
+                    padding: 6px 10px;
+                    position: absolute;
+                    z-index: 100;
+                    top: 30px;
+                    right: 0;
+                    white-space: nowrap;
+                    font-size: 12px;
+                    transition: opacity 0.1s ease-in-out;
+                }
+
+                .panel-status-wrapper:hover .panel-tooltip {
+                    visibility: visible;
+                    opacity: 1;
+                }
 
                 .panel-container {
                     background-color: #d7f5dc;
@@ -26,6 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     padding: 16 px 20px;
                     margin-bottom: 20px;
                     width: 620px;
+                    position: relative;
                 }
 
                 .panel-header {
@@ -100,18 +162,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 .biomarker-detail-expanded {
-                    margin-bottom: 15px;
-                    padding: 12px;
-                    border-left: 4px solid #007bff;
-                    background-color: #f0f8ff;
-                    border-radius: 4px;
                     display: none;
+                    border: 2px solid #007bff;
+                    background-color: #ffffffff;
+                    border-radius: 6px;
+                    padding: 12px;
+                    margin-bottom: 15px;
                     animation: slideDown 0.3s ease-out;
                 }
-                
+
                 .biomarker-detail-expanded.invalid-biomarker {
-                    border-left: 4px solid #dc3545;
-                    background-color: #ffeaea;
+                    display: none;
+                    border: 2px solid #dc3545;
+                    background-color: #ffffffff;
+                    animation: slideDown 0.3s ease-out;
                 }
                 
                 .biomarker-detail-expanded.show {
@@ -299,6 +363,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     transform: scale(1.2);
                 }
 
+                .status-icon {
+                    font-weight: bold;
+                    font-size: 18px;
+                }
+
+                .status-icon.green {
+                    color: #28a745;
+                }
+
+                .status-icon.yellow {
+                    color: #ffc107;
+                }
+
+                .status-icon.red {
+                    color: #dc3545;
+                }
 
             </style>
         `;
@@ -568,6 +648,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (anyCollapsed) {
             panelContainer.classList.remove('panel-expanded');
         }
+
     }
 
 
@@ -796,6 +877,47 @@ document.addEventListener('DOMContentLoaded', function() {
        // Process data rows (skip header row)
        for (let i = 1; i < labcorpData.length; i++) {
            const row = labcorpData[i];
+
+           const backgroundColor = row[row.length - 1]?.toLowerCase() || ''; // The color appended in Apps Script
+
+            let colorClass = 'green';
+            let statusIcon = '<span class="status-icon green">✔</span>';
+            let tooltipText = 'Panel Can Be Performed';
+
+            switch (backgroundColor) {
+            case '#ffff00':
+            // case '#fff200':
+                colorClass = 'yellow';
+                statusIcon = '<span class="status-icon yellow">?</span>';
+                tooltipText = 'Panel Might Be Able To Be Performed';
+                break;
+            case '#ff0000':
+            // case '#ea9999':
+                colorClass = 'red';
+                statusIcon = '<span class="status-icon red">X</span>';
+                tooltipText = 'Panel Cannot Be Performed';
+                break;
+            case '#00ff00':
+            // case '#d9ead3':
+                colorClass = 'green';
+                statusIcon = '<span class="status-icon green">✔</span>';
+                tooltipText = 'Panel Can Be Performed';
+                break;
+            default:
+                if (backgroundColor.includes('ff0000') || backgroundColor.includes('ea9999')) {
+                colorClass = 'red';
+                statusIcon = '<span class="status-icon red">X</span>';
+                tooltipText = 'Panel Cannot Be Performed';
+                } else if (backgroundColor.includes('ffff00') || backgroundColor.includes('fff200')) {
+                colorClass = 'yellow';
+                statusIcon = '<span class="status-icon yellow">?</span>';
+                tooltipText = 'Panel Might be able to be performed';
+                } else {
+                colorClass = 'green';
+                statusIcon = '<span class="status-icon green">✔</span>';
+                tooltipText = 'Panel Can Be Performed';
+                }
+            }
            
            if (row.length === 0) continue;
            
@@ -871,15 +993,27 @@ document.addEventListener('DOMContentLoaded', function() {
                paragraphContent += `</div>`;
            }
            
+        //    //For Debugging Purposes
+        //    if (panelName.toLowerCase().includes('lipid')) {
+        //         console.log('DEBUG: forcing yellow for Lipid panel');
+        //         colorClass = 'red';
+        //         colorMessage = 'MAYBE: Panel Might be Able to be Performed';
+        //     }
+
+           
            contentData.push({
-               keyword: panelName,
-               paragraph: paragraphContent,
-               url: url,
-               cpt: cpt,
-               testNumber: testNumber,
-               biomarkers: biomarkers.map(b => b.toLowerCase()),
-               biomarkerData: biomarkerData // Store full biomarker data for future use
-           });
+            keyword: panelName,
+            paragraph: paragraphContent,
+            url,
+            cpt,
+            testNumber,
+            colorClass,
+            statusIcon,
+            tooltipText,
+            biomarkers: biomarkers.map(b => b.toLowerCase()),
+            biomarkerData
+            });
+
        }
        
        // Sort panels by number of biomarkers, descending
@@ -1719,7 +1853,7 @@ function initializeBiomarkerSearch() {
             panelWrapper.classList.add('panel-wrapper');
 
             const panelContainer = document.createElement('div');
-            panelContainer.classList.add('panel-container', 'content-paragraph', 'hide');
+            panelContainer.classList.add('panel-container', 'content-paragraph', 'hide', item.colorClass || 'green');
 
             panelWrapper.appendChild(panelContainer);
             paragraphContainer.appendChild(panelWrapper);
@@ -1733,6 +1867,16 @@ function initializeBiomarkerSearch() {
             const panelContent = document.createElement('div');
             panelContent.classList.add('panel-content');
             panelContent.innerHTML = item.paragraph;
+
+            const statusIconWrapper = document.createElement('div');
+            statusIconWrapper.classList.add('panel-status-wrapper');
+
+            statusIconWrapper.innerHTML = `
+                ${item.statusIcon}
+                <div class="panel-tooltip">${item.tooltipText}</div>
+            `;
+
+            panelContent.appendChild(statusIconWrapper);
             
             panelContainer.appendChild(panelContent);
             paragraphContainer.appendChild(panelContainer);
