@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
    let biomarkerUrlMap = new Map();
 
    // Your Google Apps Script deployment URL (replace with your actual URL)
-   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCZJAfjsgECIOctZPQCPi8ASDDLQZlq8CGuSuPy3HCPk9qqS3H21AYn_55uybPq7o49Q/exec';
+   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCZJAfjsgECIOctZPQCPi8ASDDLQZlq8CGuSuPy3HCPk9qqS3H21AYn_55uybPq7o49Q/exec'; // Using Version 4 of "Bioassay Getter (Attached)" - EF
 
    // Cache configuration
    const CACHE_KEY = 'labcorp_data_cache';
@@ -309,7 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 .associated-panel-content {
-                    border: 1px solid #ccc;
+                    border: 2px solid #28a745;
                     border-radius: 8px;
                     padding: 12px;
                     background-color: #fff;
