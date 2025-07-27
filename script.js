@@ -2,22 +2,23 @@ document.addEventListener('DOMContentLoaded', function() {
    const searchInput = document.getElementById('searchInput');
    const paragraphContainer = document.getElementById('paragraphContainer');
    const searchButton = document.getElementById('searchButton');
-   const suggestionsDropdown = document.getElementById('suggestionsDropdown');
 
    let allContentData = [];
    let biomarkerUrlMap = new Map();
-   
    let fusePanels;
    let fuseBiomarkers;
-   let allSuggestionWords = [];
-   let searchTriggeredFromDropdown = false; 
-
+   let fuseWordSuggestions;
+   let allSuggestionWords = []; // To store words for general suggestions
+   let searchTriggeredFromDropdown = false; // Flag to prevent suggestion loops
+   
+   let searchTimeout;
    // Your Google Apps Script deployment URL (replace with your actual URL)
-   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzK3iC-xXKQubOI5Zr5Es7K2wivt9PTsXFdPoGFO4cKps12Alv8wUs_ILZd5KLjjbPgBQ/exec';
+   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCZJAfjsgECIOctZPQCPi8ASDDLQZlq8CGuSuPy3HCPk9qqS3H21AYn_55uybPq7o49Q/exec'; // Using Version 4 of "Bioassay Getter (Attached)" - EF
 
    // Cache configuration
    const CACHE_KEY = 'labcorp_data_cache';
    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+   // const CACHE_DURATION = 60 * 1000; // super short duration for debugging
 
 
     // Modified addExpandableStyles function - ADD these new styles to your existing styles
@@ -25,13 +26,74 @@ document.addEventListener('DOMContentLoaded', function() {
         const expandableStyles = `
             <style>
 
+            /* Panel status messages */
+                .panel-status-message {
+                    position: absolute;
+                    top: 16px;
+                    right: 20px;
+                    font-size: 20px;
+                    font-weight: normal;
+                }
+
+                /* Colored panel containers */
+                .panel-container.green {
+                    background-color: #d7f5dc;
+                    border-color: #28a745;
+                }
+
+                .panel-container.yellow {
+                    background-color: #fff9d6;
+                    border-color: #ffc107;
+                }
+
+                .panel-container.red {
+                    background-color: #ffeaea;
+                    border-color: #dc3545;
+                }
+
+                .panel-status-wrapper {
+                    position: absolute;
+                    top: 16px;
+                    right: 20px;
+                    display: inline-block;
+                    cursor: default;
+                }
+
+                .panel-status-icon {
+                    font-size: 20px;
+                    display: inline-block;
+                }
+
+                .panel-tooltip {
+                    visibility: hidden;
+                    opacity: 0;
+                    background-color: #333;
+                    color: #fff;
+                    text-align: center;
+                    border-radius: 6px;
+                    padding: 6px 10px;
+                    position: absolute;
+                    z-index: 100;
+                    top: 30px;
+                    right: 0;
+                    white-space: nowrap;
+                    font-size: 12px;
+                    transition: opacity 0.1s ease-in-out;
+                }
+
+                .panel-status-wrapper:hover .panel-tooltip {
+                    visibility: visible;
+                    opacity: 1;
+                }
+
                 .panel-container {
                     background-color: #d7f5dc;
-                    border: 2px solid #35b152ff;
+                    border: 2px solid #28a745;
                     border-radius: 8px;
                     padding: 16 px 20px;
                     margin-bottom: 20px;
                     width: 620px;
+                    position: relative;
                 }
 
                 .panel-header {
@@ -106,18 +168,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 .biomarker-detail-expanded {
-                    margin-bottom: 15px;
-                    padding: 12px;
-                    border-left: 4px solid #007bff;
-                    background-color: #f0f8ff;
-                    border-radius: 4px;
                     display: none;
+                    border: 2px solid #007bff;
+                    background-color: #ffffffff;
+                    border-radius: 6px;
+                    padding: 12px;
+                    margin-bottom: 15px;
                     animation: slideDown 0.3s ease-out;
                 }
-                
+
                 .biomarker-detail-expanded.invalid-biomarker {
-                    border-left: 4px solid #dc3545;
-                    background-color: #ffeaea;
+                    display: none;
+                    border: 2px solid #dc3545;
+                    background-color: #ffffffff;
+                    animation: slideDown 0.3s ease-out;
                 }
                 
                 .biomarker-detail-expanded.show {
@@ -251,7 +315,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 .associated-panel-content {
-                    border: 1px solid #ccc;
+                    border: 2px solid #28a745;
                     border-radius: 8px;
                     padding: 12px;
                     background-color: #fff;
@@ -291,7 +355,37 @@ document.addEventListener('DOMContentLoaded', function() {
                     font-weight: bold;
                 }
 
-}
+                .open-new-tab-icon {
+                    width: 18px;
+                    height: 18px;
+                    cursor: pointer;
+                    margin-left: auto;
+                    margin-top: 2px;
+                    filter: brightness(0) saturate(100%) invert(30%) sepia(95%) saturate(1732%) hue-rotate(82deg) brightness(95%) contrast(97%);
+                    transition: transform 0.2s;
+                }
+
+                .open-new-tab-icon:hover {
+                    transform: scale(1.2);
+                }
+
+                .status-icon {
+                    font-weight: bold;
+                    font-size: 18px;
+                }
+
+                .status-icon.green {
+                    color: #28a745;
+                }
+
+                .status-icon.yellow {
+                    color: #ffc107;
+                }
+
+                .status-icon.red {
+                    color: #dc3545;
+                }
+
             </style>
         `;
         
@@ -473,18 +567,24 @@ document.addEventListener('DOMContentLoaded', function() {
             panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers }) => {
                 detailsContent += `
                     <li class="associated-panel-container">
-                        <div class="associated-panel-content">
-                            <div class="associated-panel-header">
-                                <span class="associated-panel-label">PANEL</span>
-                                <span class="associated-panel-title">${keyword}</span>
-                            </div>
-                            <p class="associated-panel-meta">
-                                ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
-                                ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
-                                ${biomarkers?.length || 0} biomarkers
-                            </p>
+                    <div class="associated-panel-content">
+                        <div class="associated-panel-header">
+                            <span class="associated-panel-label">PANEL</span>
+                            <span class="associated-panel-title">${keyword}</span>
+                            <img 
+                                src="open-tab.png" 
+                                class="open-new-tab-icon" 
+                                title="Open in new tab"
+                                onclick="openPanelInNewTab('${encodeURIComponent(keyword)}')"
+                            />
                         </div>
-                    </li>`;
+                        <p class="associated-panel-meta">
+                            ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
+                            ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
+                            ${biomarkers?.length || 0} biomarkers
+                        </p>
+                    </div>
+                </li>`;
             });
 
             detailsContent += `
@@ -554,6 +654,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (anyCollapsed) {
             panelContainer.classList.remove('panel-expanded');
         }
+
     }
 
 
@@ -782,6 +883,47 @@ document.addEventListener('DOMContentLoaded', function() {
        // Process data rows (skip header row)
        for (let i = 1; i < labcorpData.length; i++) {
            const row = labcorpData[i];
+
+           const backgroundColor = row[row.length - 1]?.toLowerCase() || ''; // The color appended in Apps Script
+
+            let colorClass = 'green';
+            let statusIcon = '<span class="status-icon green">✔</span>';
+            let tooltipText = 'Panel Can Be Performed';
+
+            switch (backgroundColor) {
+            case '#ffff00':
+            // case '#fff200':
+                colorClass = 'yellow';
+                statusIcon = '<span class="status-icon yellow">?</span>';
+                tooltipText = 'Panel Might Be Able To Be Performed';
+                break;
+            case '#ff0000':
+            // case '#ea9999':
+                colorClass = 'red';
+                statusIcon = '<span class="status-icon red">X</span>';
+                tooltipText = 'Panel Cannot Be Performed';
+                break;
+            case '#00ff00':
+            // case '#d9ead3':
+                colorClass = 'green';
+                statusIcon = '<span class="status-icon green">✔</span>';
+                tooltipText = 'Panel Can Be Performed';
+                break;
+            default:
+                if (backgroundColor.includes('ff0000') || backgroundColor.includes('ea9999')) {
+                colorClass = 'red';
+                statusIcon = '<span class="status-icon red">X</span>';
+                tooltipText = 'Panel Cannot Be Performed';
+                } else if (backgroundColor.includes('ffff00') || backgroundColor.includes('fff200')) {
+                colorClass = 'yellow';
+                statusIcon = '<span class="status-icon yellow">?</span>';
+                tooltipText = 'Panel Might be able to be performed';
+                } else {
+                colorClass = 'green';
+                statusIcon = '<span class="status-icon green">✔</span>';
+                tooltipText = 'Panel Can Be Performed';
+                }
+            }
            
            if (row.length === 0) continue;
            
@@ -857,15 +999,27 @@ document.addEventListener('DOMContentLoaded', function() {
                paragraphContent += `</div>`;
            }
            
+        //    //For Debugging Purposes
+        //    if (panelName.toLowerCase().includes('lipid')) {
+        //         console.log('DEBUG: forcing yellow for Lipid panel');
+        //         colorClass = 'red';
+        //         colorMessage = 'MAYBE: Panel Might be Able to be Performed';
+        //     }
+
+           
            contentData.push({
-               keyword: panelName.toLowerCase(),
-               paragraph: paragraphContent,
-               url: url,
-               cpt: cpt,
-               testNumber: testNumber,
-               biomarkers: biomarkers.map(b => b.toLowerCase()),
-               biomarkerData: biomarkerData // Store full biomarker data for future use
-           });
+            keyword: panelName,
+            paragraph: paragraphContent,
+            url,
+            cpt,
+            testNumber,
+            colorClass,
+            statusIcon,
+            tooltipText,
+            biomarkers: biomarkers.map(b => b.toLowerCase()),
+            biomarkerData
+            });
+
        }
        
        // Sort panels by number of biomarkers, descending
@@ -880,53 +1034,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
    }
 
-   // Helper function to find column index
-   function findColumnIndex(headers, possibleNames) {
-       for (let i = 0; i < headers.length; i++) {
-           const header = headers[i].toString().toLowerCase().trim();
-           if (possibleNames.some(name => header.includes(name.toLowerCase()))) {
-               return i;
-           }
-       }
-       return -1;
-   }
+   // ADD this entire function:
+    function initializeFuse() {
+        // For panels: search by keyword (panel name)
+        const panelOptions = {
+            keys: ['keyword'],
+            threshold: 0.1,
+            includeScore: true
+        };
+        fusePanels = new Fuse(allContentData, panelOptions);
+        console.log("Fuse for panels initialized.");
 
-   // MODIFIED FUNCTION START
-function initializeFuse() {
-    // For panels: search by keyword (panel name)
-    const panelOptions = {
-        keys: ['keyword'],
-        threshold: 0.1, 
-        includeScore: true // Include score to evaluate closeness later if needed, though primarily for 'did you mean'
-    };
-    fusePanels = new Fuse(allContentData, panelOptions);
-    console.log("Fuse for panels initialized.");
+        // For biomarkers: search by biomarkerName
+        const biomarkerNamesArray = Array.from(biomarkerToPanelsMap.values()).map(b => ({
+            biomarkerName: b.biomarkerName,
+            originalKey: b.biomarkerName.toLowerCase()
+        }));
+        const biomarkerOptions = {
+            keys: ['biomarkerName'],
+            threshold: 0.1, // A lower threshold (e.g., 0.3 or 0.2) means stricter matches
+            includeScore: true
+        };
+        fuseBiomarkers = new Fuse(biomarkerNamesArray, biomarkerOptions);
+        console.log("Fuse for biomarkers initialized.");
 
-    // For biomarkers: search by biomarkerName
-    const biomarkerNamesArray = Array.from(biomarkerToPanelsMap.values()).map(b => ({
-        biomarkerName: b.biomarkerName,
-        originalKey: b.biomarkerName.toLowerCase()
-    }));
-    const biomarkerOptions = {
-        keys: ['biomarkerName'],
-        // MODIFIED LINE START - Make this slightly stricter for direct searching
-        threshold: 0.1, // A lower threshold (e.g., 0.3 or 0.2) means stricter matches
-        // MODIFIED LINE END
-        includeScore: true
-    };
-    fuseBiomarkers = new Fuse(biomarkerNamesArray, biomarkerOptions);
-    console.log("Fuse for biomarkers initialized.");
+        const wordSuggestionOptions = {
+            keys: ['word'], // Each item in allSuggestionWords will be mapped to { word: "the_word" }
+            threshold: 0.3, // Looser threshold for suggestions/typos
+            ignoreLocation: true, // Allows matching anywhere in the word, not just start
+            minMatchCharLength: 2 // Minimum length for suggestions
+        };
+        fuseWordSuggestions = new Fuse(allSuggestionWords.map(word => ({ word: word })), wordSuggestionOptions);
+        console.log("Fuse for word suggestions initialized.");
+    }
 
-    const wordSuggestionOptions = {
-        keys: ['word'], // Each item in allSuggestionWords will be mapped to { word: "the_word" }
-        threshold: 0.3, // Looser threshold for suggestions/typos
-        ignoreLocation: true, // Allows matching anywhere in the word, not just start
-        minMatchCharLength: 2 // Minimum length for suggestions
-    };
-    fuseWordSuggestions = new Fuse(allSuggestionWords.map(word => ({ word: word })), wordSuggestionOptions);
-    console.log("Fuse for word suggestions initialized.");
-}
-
+    // ADD these three functions:
     function getSuggestions(query) {
         let suggestions = new Set(); // Use a Set directly to handle uniqueness and automatically remove duplicates
 
@@ -976,7 +1118,7 @@ function initializeFuse() {
                 suggestionItem.textContent = suggestion;
                 suggestionItem.addEventListener('click', () => {
                     searchInput.value = suggestion; // Fill input with clicked suggestion
-                    searchTriggeredFromDropdown = true;
+                    searchTriggeredFromDropdown = true; // Set flag
                     filterContent(); // Perform a full search
                     hideSuggestions(); // Hide suggestions
                 });
@@ -989,6 +1131,28 @@ function initializeFuse() {
     }
 
 
+   // Helper function to find column index
+   function findColumnIndex(headers, possibleNames) {
+       for (let i = 0; i < headers.length; i++) {
+           const header = headers[i].toString().toLowerCase().trim();
+           if (possibleNames.some(name => header.includes(name.toLowerCase()))) {
+               return i;
+           }
+       }
+       return -1;
+   }
+
+   // Helper function to parse biomarkers list
+   function parseBiomarkersList(text) {
+       if (!text) return [];
+       
+       const biomarkers = text
+           .split(/[,;|\n\r]+/)
+           .map(item => item.trim())
+           .filter(item => item.length > 0);
+       
+       return biomarkers;
+   }
 
 window.togglePanelList = function(panelListId, headerElement) {
     const panelList = document.getElementById(panelListId);
@@ -1184,7 +1348,8 @@ function createBiomarkerResult(biomarkerInfo, index) {
             <div class="panel-in-biomarker-view" data-panel-index="${panelRef.panelIndex}">
                 <div class="panel-name-clickable" onclick="togglePanelInBiomarkerView(${panelRef.panelIndex}, this)">
                     <span class="mini-panel-label"> PANEL</span>
-                    <span class="panel-name">${panelData.keyword.charAt(0).toUpperCase() + panelData.keyword.slice(1)}</span>
+                    <span class="panel-name">${panelData.displayName}</span>
+
                 </div>
                 <div class="panel-quick-info">
                     ${panelData.cpt ? `CPT: ${panelData.cpt}` : ''}${panelData.cpt && panelData.testNumber ? ' | ' : ''}${panelData.testNumber ? `Test #: ${panelData.testNumber}` : ''}${(panelData.cpt || panelData.testNumber) && panelData.biomarkers ? ' | ' : ''}${panelData.biomarkers ? `${panelData.biomarkers.length} biomarkers` : ''}
@@ -1558,131 +1723,294 @@ function addBiomarkerSearchStyles() {
     document.head.insertAdjacentHTML('beforeend', biomarkerStyles);
 }
 
+function filterPanelsOnly() {
+    const query = searchInput.value.trim().toLowerCase();
+    const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
 
+    // Remove biomarker results and search summaries
+    document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage')
+        .forEach(el => el.remove());
+
+    if (query === '') {
+        allParagraphs.forEach(p => p.classList.add('hide'));
+        return;
+    }
+
+    let found = false;
+    allParagraphs.forEach(p => {
+        const keyword = p.getAttribute('data-keyword') || '';
+        const category = p.getAttribute('data-category') || '';
+
+        if (keyword.includes(query) || category.includes(query)) {
+            p.classList.remove('hide');
+            found = true;
+        } else {
+            p.classList.add('hide');
+        }
+    });
+
+    if (!found) {
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.id = 'noResultsMessage';
+        noResultsDiv.innerHTML = `
+            <p style="text-align: center; color: #666; font-style: italic;">
+                No matching panel results for "${query}"<br>
+                <small>Try searching for panel names or categories</small>
+            </p>`;
+        paragraphContainer.appendChild(noResultsDiv);
+    }
+}
 
 
 // Enhanced filter function that shows both panels and biomarkers
+function filterContentWithBiomarkers() {
+    const query = searchInput.value.trim().toLowerCase();
+    
+    // Remove any existing biomarker results
+    const existingBiomarkerResults = document.querySelectorAll('.biomarker-result-container');
+    existingBiomarkerResults.forEach(result => result.remove());
+    
+    // Remove existing search summary
+    const existingSummary = document.getElementById('search-results-summary');
+    if (existingSummary) {
+        existingSummary.remove();
+    }
+    
+    // Early return for empty query
+    if (query === '') {
+        const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
+        allParagraphs.forEach(p => p.classList.add('hide'));
+        const existingNoResultsMessage = document.getElementById('noResultsMessage');
+        if (existingNoResultsMessage) {
+            existingNoResultsMessage.remove();
+        }
+        return;
+    }
+    
+    // Find matching biomarkers
+    const matchingBiomarkers = findMatchingBiomarkers(query);
+    
+    // Find matching panels (use original logic)
+    const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
+    let matchingPanels = 0;
+    
+    const toShow = [];
+    const toHide = [];
+    
+    allParagraphs.forEach(p => {
+        const keyword = p.getAttribute('data-keyword') || '';
+        const category = p.getAttribute('data-category') || '';
+        const biomarkers = p.getAttribute('data-biomarkers') || '';
+        
+        const matchesPanel = keyword.includes(query);
+        const matchesCategory = category.includes(query);
+        const matchesBiomarkers = biomarkers.includes(query);
+        
+        if (matchesPanel || matchesCategory || matchesBiomarkers) {
+            toShow.push(p);
+            matchingPanels++;
+        } else {
+            toHide.push(p);
+        }
+    });
+    
+    // Apply panel visibility changes
+    toShow.forEach(p => p.classList.remove('hide'));
+    toHide.forEach(p => p.classList.add('hide'));
+    
+    // Add biomarker results at the top
+    if (matchingBiomarkers.length > 0) {
+        matchingBiomarkers.forEach((biomarkerInfo, index) => {
+            const biomarkerResult = createBiomarkerResult(biomarkerInfo, index);
+            paragraphContainer.insertBefore(biomarkerResult, paragraphContainer.firstChild);
+        });
+    }
+    
+    // Add search results summary
+    const totalResults = matchingBiomarkers.length + matchingPanels;
+    if (totalResults > 0) {
+        const summaryDiv = document.createElement('div');
+        summaryDiv.id = 'search-results-summary';
+        summaryDiv.className = 'search-results-summary';
+        summaryDiv.innerHTML = `
+            <strong>Search Results for "${query}":</strong> 
+            ${matchingBiomarkers.length} biomarker(s) and ${matchingPanels} panel(s) found
+        `;
+        paragraphContainer.insertBefore(summaryDiv, paragraphContainer.firstChild);
+    }
+    
+    // Handle no results message
+    const existingNoResultsMessage = document.getElementById('noResultsMessage');
+    
+    if (totalResults === 0) {
+        if (!existingNoResultsMessage) {
+            const noResultsDiv = document.createElement('div');
+            noResultsDiv.id = 'noResultsMessage';
+            noResultsDiv.innerHTML = `
+                <p style="text-align: center; color: #666; font-style: italic;">
+                    No matching results found for "${query}"<br>
+                    <small>Try searching for panel names, categories, or biomarker names</small>
+                </p>
+            `;
+            paragraphContainer.appendChild(noResultsDiv);
+        }
+    } else {
+        if (existingNoResultsMessage) {
+            existingNoResultsMessage.remove();
+        }
+    }
+}
 
 // Make functions globally available
 window.toggleBiomarkerExpansion = toggleBiomarkerExpansion;
 window.togglePanelInBiomarkerView = togglePanelInBiomarkerView;
 
+// Initialize biomarker search functionality
+function initializeBiomarkerSearch() {
+    // Add styles
+    addBiomarkerSearchStyles();
 
+    // Build biomarker mapping
+    buildBiomarkerToPanelsMap();
+
+    // Register toggle behavior
+    const checkboxAll = document.getElementById('searchModeAll');
+    const checkboxPanels = document.getElementById('searchModePanels');
+
+    // Use selected radio button to determine mode
+    window.filterContent = function () {
+        const searchPanelsOnly = checkboxPanels.checked;
+        if (searchPanelsOnly) {
+            filterPanelsOnly();
+        } else {
+            filterContentWithBiomarkers();
+        }
+    };
+
+    }
 
 
 // Call this function after your existing loadContent() completes successfully
 // Add this to your existing renderInitialParagraphs function at the end:
 // initializeBiomarkerSearch();
 
-    // MODIFIED FUNCTION START (The entire function content is replaced)
-window.filterContent = function() {
-    const query = searchInput.value.trim();
-    const lowerQuery = query.toLowerCase();
+    window.filterContent = function () {
+        const query = searchInput.value.trim().toLowerCase();
+        const lowerQuery = query.toLowerCase(); 
 
-    // Clear previous results and messages (including the summary and suggestions)
-    document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
+        // Clear old messages
+        document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
         .forEach(el => el.remove());
-    hideSuggestions(); // Hide suggestions when a full search is initiated
+        hideSuggestions(); // Hide suggestions when a full search is initiated
 
-    if (lowerQuery === '') {
-        paragraphContainer.querySelectorAll('.content-paragraph').forEach(p => p.classList.add('hide'));
-        return;
-    }
-
-    const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'all';
-
-    let foundDirectMatches = []; // To store results that are "good enough" to be direct matches
-
-    // --- PHASE 1: Perform strict Fuse.js search for direct results ---
-    // Use a stricter threshold for finding actual results to display
-    const strictPanelResults = fusePanels.search(lowerQuery, { threshold: 0.1 }); // Very strict
-    const strictBiomarkerResults = fuseBiomarkers.search(lowerQuery, { threshold: 0.1 }); // Very strict
-
-    // Collect direct panel matches
-    strictPanelResults.forEach(result => {
-        // Find the actual DOM element for this panel
-        const panelElement = document.querySelector(`[data-keyword="${result.item.keyword}"]`);
-        if (panelElement) {
-            foundDirectMatches.push({ type: 'panel', element: panelElement, data: result.item });
+        if (lowerQuery === '') {
+            paragraphContainer.querySelectorAll('.content-paragraph').forEach(p => p.classList.add('hide'));
+            return;
         }
-    });
 
-    // Collect direct biomarker matches
-    if (searchMode === 'all') {
-        strictBiomarkerResults.forEach(result => {
-            foundDirectMatches.push({ type: 'biomarker', data: biomarkerToPanelsMap.get(result.item.originalKey) });
-        });
-    }
+        if (!fusePanels || !fuseBiomarkers || !fuseWordSuggestions) {
+            console.warn("Fuse.js instances not initialized yet. Cannot perform search.");
+            const noResultsDiv = document.createElement('div');
+            noResultsDiv.id = 'noResultsMessage';
+            noResultsDiv.innerHTML = `<p style="text-align: center; color: red; font-style: italic;">Search is not ready. Please wait for data to load or refresh.</p>`;
+            paragraphContainer.appendChild(noResultsDiv);
+            return;
+        }
 
-    let matchingPanelsCount = 0;
-    const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
+        const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'all';
+        let foundDirectMatches = []; 
+        
+            // --- PHASE 1: Perform strict Fuse.js search for direct results ---
+        // Use a stricter threshold for finding actual results to display
+        const strictPanelResults = fusePanels.search(lowerQuery, { threshold: 0.1 }); // Very strict
+        const strictBiomarkerResults = fuseBiomarkers.search(lowerQuery, { threshold: 0.1 }); // Very strict
 
-    // Hide all panels initially
-    allParagraphs.forEach(p => p.classList.add('hide'));
-
-    // --- PHASE 2: Display direct matches if found ---
-    if (foundDirectMatches.length > 0) {
-        // Display matching panels
-        foundDirectMatches.filter(m => m.type === 'panel').forEach(match => {
-            match.element.classList.remove('hide');
-            matchingPanelsCount++;
-        });
-
-        // Display matching biomarkers (already converted to biomarkerResult HTML)
-        foundDirectMatches.filter(m => m.type === 'biomarker').forEach((match, index) => {
-            const biomarkerResult = createBiomarkerResult(match.data, index);
-            const firstPanel = paragraphContainer.querySelector('.panel-wrapper');
-            if (firstPanel) {
-                paragraphContainer.insertBefore(biomarkerResult, firstPanel.parentElement);
-            } else {
-                paragraphContainer.insertBefore(biomarkerResult, paragraphContainer.firstChild);
+        // Collect direct panel matches
+        strictPanelResults.forEach(result => {
+            // Find the actual DOM element for this panel
+            const panelElement = document.querySelector(`[data-keyword="${result.item.keyword}"]`);
+            if (panelElement) {
+                foundDirectMatches.push({ type: 'panel', element: panelElement, data: result.item });
             }
         });
 
-        const totalResults = foundDirectMatches.length; // Count of both panels and biomarkers
-        if (totalResults > 0) {
-            // Summary message will not be displayed as per previous instruction
-        }
-    } else {
-        // ADDED BLOCK START
-        // --- PHASE 3: No strict direct matches, offer suggestions, ONLY IF NOT FROM DROPDOWN ---
-        if (!searchTriggeredFromDropdown) { // Check the flag here!
-            const suggestions = getSuggestions(lowerQuery); // getSuggestions uses threshold 0.5 for words
-
-            if (suggestions.length > 0) {
-                const suggestionDiv = document.createElement('div');
-                suggestionDiv.id = 'noResultsMessage'; // Reusing for consistent styling
-                suggestionDiv.className = 'suggestion-message';
-
-                let suggestionHtml = `<p>No direct results found for "<strong>${query}</strong>".</p>`;
-                if (suggestions.length === 1) {
-                    const suggestedTerm = suggestions[0];
-                    suggestionHtml += `<p>Did you mean: <a href="#" onclick="searchInput.value = '${suggestedTerm}'; filterContent(); return false;">${suggestedTerm}</a>?</p>`;
-                } else {
-                    suggestionHtml += `<p>Search instead for: `;
-                    suggestionHtml += suggestions.map(term => `<a href="#" onclick="searchInput.value = '${term}'; filterContent(); return false;">${term}</a>`).join(', ');
-                    suggestionHtml += `?</p>`;
+        // Collect direct biomarker matches
+        if (searchMode === 'all') {
+            strictBiomarkerResults.forEach(result => {
+                // Ensure biomarkerToPanelsMap has the key before pushing
+                const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
+                if (biomarkerInfo) {
+                    foundDirectMatches.push({ type: 'biomarker', data: biomarkerInfo });
                 }
-                suggestionDiv.innerHTML = suggestionHtml;
-                paragraphContainer.appendChild(suggestionDiv);
-            } else {
-                // Absolutely no matches and no suggestions
-                const noResultsDiv = document.createElement('div');
-                noResultsDiv.id = 'noResultsMessage';
-                noResultsDiv.innerHTML = `
-                    <p style="text-align: center; color: #666; font-style: italic;">
-                        No matching results found for "${query}"<br>
-                        <small>Try searching for panel names, categories, or biomarker names</small>
-                    </p>
-                `;
-                paragraphContainer.appendChild(noResultsDiv);
+            });
+        }
+
+        let matchingPanelsCount = 0;
+        const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
+
+        // Hide all panels initially
+        allParagraphs.forEach(p => p.classList.add('hide'));
+
+        // --- PHASE 2: Display direct matches if found ---
+        if (foundDirectMatches.length > 0) {
+            // Display matching panels
+            foundDirectMatches.filter(m => m.type === 'panel').forEach(match => {
+                match.element.classList.remove('hide');
+                matchingPanelsCount++;
+            });
+
+            // Display matching biomarkers (already converted to biomarkerResult HTML)
+            foundDirectMatches.filter(m => m.type === 'biomarker').forEach((match, index) => {
+                const biomarkerResult = createBiomarkerResult(match.data, index);
+                const firstPanel = paragraphContainer.querySelector('.panel-wrapper'); // Insert before the first panel wrapper
+                if (firstPanel) {
+                    paragraphContainer.insertBefore(biomarkerResult, firstPanel.parentElement);
+                } else {
+                    paragraphContainer.insertBefore(biomarkerResult, paragraphContainer.firstChild);
+                }
+            });
+
+            const totalResults = foundDirectMatches.length; // Count of both panels and biomarkers
+            if (totalResults > 0) {
+                // Summary message will not be displayed as per previous instruction
+            }
+        } else {
+            // --- PHASE 3: No strict direct matches, offer suggestions, ONLY IF NOT FROM DROPDOWN ---
+            if (!searchTriggeredFromDropdown) { // Check the flag here!
+                const suggestions = getSuggestions(lowerQuery); // getSuggestions uses threshold 0.5 for words
+
+                if (suggestions.length > 0) {
+                    const suggestionDiv = document.createElement('div');
+                    suggestionDiv.id = 'noResultsMessage'; // Reusing for consistent styling
+                    suggestionDiv.className = 'suggestion-message';
+
+                    let suggestionHtml = `<p>No direct results found for "<strong>${query}</strong>".</p>`;
+                    if (suggestions.length === 1) {
+                        const suggestedTerm = suggestions[0];
+                        suggestionHtml += `<p>Did you mean: <a href="#" onclick="searchInput.value = '${suggestedTerm}'; filterContent(); return false;">${suggestedTerm}</a>?</p>`;
+                    } else {
+                        suggestionHtml += `<p>Search instead for: `;
+                        suggestionHtml += suggestions.map(term => `<a href="#" onclick="searchInput.value = '${term}'; filterContent(); return false;">${term}</a>`).join(', ');
+                        suggestionHtml += `?</p>`;
+                    }
+                    suggestionDiv.innerHTML = suggestionHtml;
+                    paragraphContainer.appendChild(suggestionDiv);
+                } else {
+                    // Absolutely no matches and no suggestions
+                    const noResultsDiv = document.createElement('div');
+                    noResultsDiv.id = 'noResultsMessage';
+                    noResultsDiv.innerHTML = `
+                        <p style="text-align: center; color: #666; font-style: italic;">
+                            No matching results found for "${query}"<br>
+                            <small>Try searching for panel names${searchMode === 'all' ? ', categories, or biomarker names' : ' or categories'}</small>
+                        </p>
+                    `;
+                    paragraphContainer.appendChild(noResultsDiv);
+                }
             }
         }
-        // ADDED BLOCK END
-    }
-    searchTriggeredFromDropdown = false;
-};
-// MODIFIED FUNCTION END
+        searchTriggeredFromDropdown = false; // Reset flag after search completes
+    };
 
 
    // Modified renderInitialParagraphs function - only the relevant part
@@ -1695,7 +2023,7 @@ window.filterContent = function() {
             panelWrapper.classList.add('panel-wrapper');
 
             const panelContainer = document.createElement('div');
-            panelContainer.classList.add('panel-container', 'content-paragraph', 'hide');
+            panelContainer.classList.add('panel-container', 'content-paragraph', 'hide', item.colorClass || 'green');
 
             panelWrapper.appendChild(panelContainer);
             paragraphContainer.appendChild(panelWrapper);
@@ -1709,6 +2037,16 @@ window.filterContent = function() {
             const panelContent = document.createElement('div');
             panelContent.classList.add('panel-content');
             panelContent.innerHTML = item.paragraph;
+
+            const statusIconWrapper = document.createElement('div');
+            statusIconWrapper.classList.add('panel-status-wrapper');
+
+            statusIconWrapper.innerHTML = `
+                ${item.statusIcon}
+                <div class="panel-tooltip">${item.tooltipText}</div>
+            `;
+
+            panelContent.appendChild(statusIconWrapper);
             
             panelContainer.appendChild(panelContent);
             paragraphContainer.appendChild(panelContainer);
@@ -1738,47 +2076,49 @@ window.filterContent = function() {
         
         console.log(`Rendered ${allContentData.length} paragraphs`);
 
-        //initializeBiomarkerSearch(); // we don't need this as of right now
+        // initializeBiomarkerSearch(); // we don't need this as of right now
     }
 
    // Make functions globally available
    window.expandAllBiomarkers = expandAllBiomarkers;
    window.collapseAllBiomarkers = collapseAllBiomarkers;
 
-   
 
-   addExpandableStyles();
+   // MODIFIED BLOCK START
+   addExpandableStyles(); // Keep this as it is
    loadContent().then(() => {
-    showCacheStatus();
-    buildBiomarkerToPanelsMap(); // Build the mapping after content is loaded
-    
-    const tempWords = new Set();
-    const commonStopWords = new Set(["and", "or", "the", "a", "an", "for", "with", "of", "in", "to", "at", "by", "on", "is", "are", "as", "be", "but", "not", "from", "up", "down", "out", "off"]); // Add more common words if needed
+        showCacheStatus();
+        buildBiomarkerToPanelsMap(); // Build the mapping after content is loaded
 
-    allContentData.forEach(panel => {
-        // Add individual words from panel keywords, splitting by common delimiters
-        panel.keyword.split(/[\s\-_/.,()]+/).forEach(rawWord => { // Split by spaces, hyphens, underscores, etc.
-            const word = rawWord.toLowerCase().trim();
-            if (word.length >= 3 && !/^\d+$/.test(word) && !commonStopWords.has(word)) { // Min 3 chars, not just numbers, not a stop word
-                tempWords.add(word);
-            }
+        // New: Populate allSuggestionWords for word-level suggestions
+        const tempWords = new Set();
+        const commonStopWords = new Set(["and", "or", "the", "a", "an", "for", "with", "of", "in", "to", "at", "by", "on", "is", "are", "as", "be", "but", "not", "from", "up", "down", "out", "off"]); // Add more common words if needed
+
+        allContentData.forEach(panel => {
+            // Add individual words from panel keywords, splitting by common delimiters
+            panel.keyword.split(/[\s\-_/.,()]+/).forEach(rawWord => {
+                const word = rawWord.toLowerCase().trim();
+                if (word.length >= 3 && !/^\d+$/.test(word) && !commonStopWords.has(word)) { // Min 3 chars, not just numbers, not a stop word
+                    tempWords.add(word);
+                }
+            });
+            // Optionally, if you have other text fields like panel descriptions, you could parse them here too
         });
-        // Optionally, if you have other text fields like panel descriptions, you could parse them here too
-    });
-    biomarkerToPanelsMap.forEach(biomarker => {
-        // Add individual words from biomarker names, splitting by common delimiters
-        biomarker.biomarkerName.split(/[\s\-_/.,()]+/).forEach(rawWord => { // Split by spaces, hyphens, underscores, etc.
-            const word = rawWord.toLowerCase().trim();
-            if (word.length >= 3 && !/^\d+$/.test(word) && !commonStopWords.has(word)) { // Min 3 chars, not just numbers, not a stop word
-                tempWords.add(word);
-            }
+        biomarkerToPanelsMap.forEach(biomarker => {
+            // Add individual words from biomarker names, splitting by common delimiters
+            biomarker.biomarkerName.split(/[\s\-_/.,()]+/).forEach(rawWord => {
+                const word = rawWord.toLowerCase().trim();
+                if (word.length >= 3 && !/^\d+$/.test(word) && !commonStopWords.has(word)) { // Min 3 chars, not just numbers, not a stop word
+                    tempWords.add(word);
+                }
+            });
+            // Optionally, if you have biomarker descriptions, parse them here
         });
-        // Optionally, if you have biomarker descriptions, parse them here
-    });
-    allSuggestionWords = Array.from(tempWords).sort(); // Convert to array and sort
-    console.log(`Populated ${allSuggestionWords.length} unique suggestion words for autocomplete.`);
-    
-    initializeFuse();
+        allSuggestionWords = Array.from(tempWords).sort(); // Convert to array and sort
+        console.log(`Populated ${allSuggestionWords.length} unique suggestion words for autocomplete.`);
+
+        initializeFuse(); // Initialize all Fuse instances here after data is ready
+
         const checkboxAll = document.getElementById('searchModeAll');
         const checkboxPanels = document.getElementById('searchModePanels');
 
@@ -1789,13 +2129,6 @@ window.filterContent = function() {
         // Handle clicks
         searchButton.addEventListener('click', filterContent);
 
-        // Handle enter key
-        searchInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                if (searchTimeout) clearTimeout(searchTimeout);
-                filterContent();
-            }
-        });
 
         // Re-enable biomarker click expansion
         document.addEventListener('click', function(e) {
@@ -1803,62 +2136,117 @@ window.filterContent = function() {
                 const biomarkerName = e.target.getAttribute('data-biomarker');
                 const loincCode = e.target.getAttribute('data-loinc');
                 const panelContainer = e.target.closest('.panel-container');
-                
+
                 toggleBiomarkerDetails(e.target, biomarkerName, { loinc: loincCode }, panelContainer);
             }
         });
-    });
 
-   
-   searchButton.addEventListener('click', filterContent);
-
-   // Real-time search with proper debouncing
-    let searchTimeout;
-    searchInput.addEventListener('input', function() {
-        const query = searchInput.value.trim();
-        const lowerQuery = query.toLowerCase(); // Consistent use of lowerQuery
-
-        if (searchTimeout) {
-            clearTimeout(searchTimeout);
+        // Handle initial URL search parameter
+        const params = new URLSearchParams(window.location.search);
+        const searchValue = params.get('search');
+        if (searchValue) {
+            searchInput.value = decodeURIComponent(searchValue); // Decode the URL component
+            filterContent();
         }
 
-        if (lowerQuery.length > 0) { // Check length of lowerQuery
-            searchTimeout = setTimeout(() => {
-                // Call getSuggestions to get the fuzzy matches for the dropdown
-                // This uses the thresholds (0.4) defined in initializeFuse for the general suggestion instances
-                const suggestions = getSuggestions(lowerQuery);
-                showSuggestions(suggestions);
-            }, 300);
-        } else {
-            hideSuggestions();
-            filterContent(); // Clear results when input is empty
+    }); // End of loadContent().then() block
+
+    // Remove this duplicate listener:
+    // searchButton.addEventListener('click', filterContent);
+
+    // Real-time search with proper debouncing (UPDATED LOGIC)
+        let currentSuggestionIndex = -1; // Keep this outside if not already there
+
+        searchInput.addEventListener('input', function() {
+            const query = searchInput.value.trim();
+            const lowerQuery = query.toLowerCase(); // Consistent use of lowerQuery
+
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+
+            if (lowerQuery.length > 0) { // Check length of lowerQuery
+                searchTimeout = setTimeout(() => {
+                    // Call getSuggestions to get the fuzzy matches for the dropdown
+                    // This uses the thresholds (0.4) defined in initializeFuse for the general suggestion instances
+                    const suggestions = getSuggestions(lowerQuery);
+                    showSuggestions(suggestions);
+                }, 300);
+            } else {
+                hideSuggestions();
+                filterContent(); // Clear results when input is empty
+            }
+        });
+
+
+    // Also add immediate search on Enter key press
+    searchInput.addEventListener('keydown', function(e) {
+        const suggestionItems = suggestionsDropdown.querySelectorAll('.suggestion-item');
+        if (suggestionItems.length > 0) { // Only handle arrow keys/enter if suggestions are visible
+            if (e.key === 'ArrowDown') {
+                e.preventDefault(); // Prevent cursor movement
+                if (currentSuggestionIndex < suggestionItems.length - 1) {
+                    currentSuggestionIndex++;
+                } else {
+                    currentSuggestionIndex = 0; // Wrap around
+                }
+                highlightSuggestion(suggestionItems, currentSuggestionIndex);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault(); // Prevent cursor movement
+                if (currentSuggestionIndex > 0) {
+                    currentSuggestionIndex--;
+                } else {
+                    currentSuggestionIndex = suggestionItems.length - 1; // Wrap around
+                }
+                highlightSuggestion(suggestionItems, currentSuggestionIndex);
+            } else if (e.key === 'Enter') {
+                if (currentSuggestionIndex > -1) {
+                    // If a suggestion is highlighted, use it
+                    suggestionItems[currentSuggestionIndex].click();
+                } else {
+                    // Otherwise, perform regular search (already handled by debounce/keydown event)
+                    filterContent(); // Ensure search runs if enter is pressed without selecting a suggestion
+                }
+                suggestionsDropdown.style.display = 'none'; // Hide dropdown on Enter
+                currentSuggestionIndex = -1; // Reset index
+            }
+        } else if (e.key === 'Enter') { // If no suggestions, just perform regular search on Enter
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+            filterContent();
         }
     });
 
-
-   // Also add immediate search on Enter key press
-   searchInput.addEventListener('keydown', function(e) {
-       if (e.key === 'Enter') {
-           if (searchTimeout) {
-               clearTimeout(searchTimeout);
-           }
-           filterContent();
-       }
-   });
-
-   searchInput.addEventListener('blur', (event) => { // Added 'event' parameter
-        // Check if the relatedTarget (where focus is going) is within the suggestions dropdown
-        if (event.relatedTarget && suggestionsDropdown.contains(event.relatedTarget)) {
-            // If focus is going to a suggestion item, do NOT hide immediately.
-            // The click event on the suggestion item will handle the search and hiding.
-            return; 
+    // ADD the highlightSuggestion function (it was there before, but ensure it's here now)
+    function highlightSuggestion(items, index) {
+            items.forEach((item, idx) => {
+                if (idx === index) {
+                    item.style.backgroundColor = '#f0f0f0';
+                } else {
+                    item.style.backgroundColor = '';
+                }
+            });
+            // Scroll the highlighted item into view if necessary
+            if (items[index]) {
+                items[index].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+            }
         }
 
-        // If focus is going elsewhere (not to a suggestion), then hide the suggestions
-        setTimeout(() => {
-            hideSuggestions();
-        }, 150); // Small delay to allow click event to register if applicable
+    searchInput.addEventListener('blur', (event) => { // Added 'event' parameter
+            // Check if the relatedTarget (where focus is going) is within the suggestions dropdown
+            if (event.relatedTarget && suggestionsDropdown.contains(event.relatedTarget)) {
+                // If focus is going to a suggestion item, do NOT hide immediately.
+                // The click event on the suggestion item will handle the search and hiding.
+                return;
+            }
+
+            // If focus is going elsewhere (not to a suggestion), then hide the suggestions
+            setTimeout(() => {
+                hideSuggestions();
+                currentSuggestionIndex = -1; // Reset index on blur
+            }, 150); // Small delay to allow click event to register if applicable
+        });
     });
 
-
-});
+// MODIFIED BLOCK END
