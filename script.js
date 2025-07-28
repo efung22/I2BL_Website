@@ -1,7 +1,14 @@
+window.openPanelInNewTab = function(panelKeyword) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const newUrl = `${baseUrl}?search=${panelKeyword}`;
+    window.open(newUrl, '_blank');
+};
+
 document.addEventListener('DOMContentLoaded', function() {
    const searchInput = document.getElementById('searchInput');
    const paragraphContainer = document.getElementById('paragraphContainer');
    const searchButton = document.getElementById('searchButton');
+   const suggestionsDropdown = document.getElementById('suggestionsDropdown');
 
    let allContentData = [];
    let biomarkerUrlMap = new Map();
@@ -1348,7 +1355,7 @@ function createBiomarkerResult(biomarkerInfo, index) {
             <div class="panel-in-biomarker-view" data-panel-index="${panelRef.panelIndex}">
                 <div class="panel-name-clickable" onclick="togglePanelInBiomarkerView(${panelRef.panelIndex}, this)">
                     <span class="mini-panel-label"> PANEL</span>
-                    <span class="panel-name">${panelData.displayName}</span>
+                    <span class="panel-name">${panelData.keyword}</span>
 
                 </div>
                 <div class="panel-quick-info">
