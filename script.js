@@ -1930,7 +1930,7 @@ function initializeBiomarkerSearch() {
         const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'all';
         let foundDirectMatches = []; 
 
-        const searchThreshold = searchTriggeredFromDropdown ? 0.4 : 0.1;
+        const searchThreshold = searchTriggeredFromDropdown ? 0.2 : 0.1;
         
         // --- PHASE 1: Perform Fuse.js search for direct results ---
         const currentPanelOptions = {
@@ -1992,22 +1992,21 @@ function initializeBiomarkerSearch() {
             // Sort results to prioritize panels then biomarkers
             foundDirectMatches.sort((a, b) => {
             // 1. Primary sort: by Fuse.js score (lower is better)
-                if (a.data.score !== undefined && b.data.score !== undefined) {
-                    if (a.data.score !== b.data.score) {
-                        return a.data.score - b.data.score;
-                    }
+            if (a.data.score !== undefined && b.data.score !== undefined) {
+                if (a.data.score !== b.data.score) {
+                    return a.data.score - b.data.score;
                 }
+            }
 
-                // 2. Secondary sort: if scores are equal, prioritize panels over biomarkers
-                if (a.type === 'panel' && b.type === 'biomarker') return -1;
-                if (a.type === 'biomarker' && b.type === 'panel') return 1;
+            // 2. Secondary sort: if scores are equal, prioritize panels over biomarkers
+            if (a.type === 'panel' && b.type === 'biomarker') return -1;
+            if (a.type === 'biomarker' && b.type === 'panel') return 1;
 
-                // 3. Tertiary sort: if scores and types are equal, sort alphabetically by name (optional)
-                // This is especially useful for results with identical scores.
-                const nameA = a.type === 'panel' ? a.data.keyword : a.data.biomarkerName;
-                const nameB = b.type === 'panel' ? b.data.keyword : b.data.biomarkerName;
-                return nameA.localeCompare(nameB);
-            });
+            // 3. Tertiary sort: if scores and types are equal, sort alphabetically by name (optional)
+            const nameA = a.type === 'panel' ? a.data.keyword : a.data.biomarkerName;
+            const nameB = b.type === 'panel' ? b.data.keyword : b.data.biomarkerName;
+            return nameA.localeCompare(nameB);
+        });
 
             // Display matching panels
             foundDirectMatches.filter(m => m.type === 'panel').forEach(match => {
