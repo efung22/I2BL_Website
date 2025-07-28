@@ -1929,11 +1929,40 @@ function initializeBiomarkerSearch() {
 
         const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'all';
         let foundDirectMatches = []; 
+
+        const searchThreshold = searchTriggeredFromDropdown ? 0.4 : 0.1;
         
-            // --- PHASE 1: Perform strict Fuse.js search for direct results ---
-        // Use a stricter threshold for finding actual results to display
-        const strictPanelResults = fusePanels.search(lowerQuery, { threshold: 0.1 }); // Very strict
-        const strictBiomarkerResults = fuseBiomarkers.search(lowerQuery, { threshold: 0.1 }); // Very strict
+        // --- PHASE 1: Perform Fuse.js search for direct results ---
+        const currentPanelOptions = {
+            keys: ['keyword', 'cpt', 'testNumber'], // Add more keys if panels can be searched by them
+            threshold: searchThreshold,
+            includeScore: true,
+            ignoreLocation: true, // Important for partial word matches
+            findAllMatches: true // Important for partial word matches
+        };
+        const currentBiomarkerOptions = {
+            keys: ['biomarkerName', 'loincCode', 'description', 'assayType'], // Add more keys if biomarkers can be searched by them
+            threshold: searchThreshold,
+            includeScore: true,
+            ignoreLocation: true,
+            findAllMatches: true
+        };
+
+        const searchFusePanels = new Fuse(allContentData, currentPanelOptions);
+        const strictPanelResults = searchFusePanels.search(lowerQuery);
+
+        let strictBiomarkerResults = [];
+        if (searchMode === 'all') {
+            const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => ({
+                biomarkerName: b.biomarkerName,
+                originalKey: b.biomarkerName.toLowerCase(),
+                loincCode: b.loincCode, // Include loincCode in searchable keys for biomarkers
+                description: biomarkerUrlMap.get(b.biomarkerName.toLowerCase())?.description || '',
+                assayType: biomarkerUrlMap.get(b.biomarkerName.toLowerCase())?.assayType || ''
+            }));
+            const searchFuseBiomarkers = new Fuse(biomarkerNamesArrayForSearch, currentBiomarkerOptions);
+            strictBiomarkerResults = searchFuseBiomarkers.search(lowerQuery);
+        }
 
         // Collect direct panel matches
         strictPanelResults.forEach(result => {
@@ -1945,15 +1974,12 @@ function initializeBiomarkerSearch() {
         });
 
         // Collect direct biomarker matches
-        if (searchMode === 'all') {
-            strictBiomarkerResults.forEach(result => {
-                // Ensure biomarkerToPanelsMap has the key before pushing
-                const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
-                if (biomarkerInfo) {
-                    foundDirectMatches.push({ type: 'biomarker', data: biomarkerInfo });
-                }
-            });
-        }
+        strictBiomarkerResults.forEach(result => {
+            const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
+            if (biomarkerInfo) {
+                foundDirectMatches.push({ type: 'biomarker', data: biomarkerInfo });
+            }
+        });
 
         let matchingPanelsCount = 0;
         const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
@@ -1963,6 +1989,26 @@ function initializeBiomarkerSearch() {
 
         // --- PHASE 2: Display direct matches if found ---
         if (foundDirectMatches.length > 0) {
+            // Sort results to prioritize panels then biomarkers
+            foundDirectMatches.sort((a, b) => {
+            // 1. Primary sort: by Fuse.js score (lower is better)
+                if (a.data.score !== undefined && b.data.score !== undefined) {
+                    if (a.data.score !== b.data.score) {
+                        return a.data.score - b.data.score;
+                    }
+                }
+
+                // 2. Secondary sort: if scores are equal, prioritize panels over biomarkers
+                if (a.type === 'panel' && b.type === 'biomarker') return -1;
+                if (a.type === 'biomarker' && b.type === 'panel') return 1;
+
+                // 3. Tertiary sort: if scores and types are equal, sort alphabetically by name (optional)
+                // This is especially useful for results with identical scores.
+                const nameA = a.type === 'panel' ? a.data.keyword : a.data.biomarkerName;
+                const nameB = b.type === 'panel' ? b.data.keyword : b.data.biomarkerName;
+                return nameA.localeCompare(nameB);
+            });
+
             // Display matching panels
             foundDirectMatches.filter(m => m.type === 'panel').forEach(match => {
                 match.element.classList.remove('hide');
@@ -1980,18 +2026,14 @@ function initializeBiomarkerSearch() {
                 }
             });
 
-            const totalResults = foundDirectMatches.length; // Count of both panels and biomarkers
-            if (totalResults > 0) {
-                // Summary message will not be displayed as per previous instruction
-            }
         } else {
             // --- PHASE 3: No strict direct matches, offer suggestions, ONLY IF NOT FROM DROPDOWN ---
             if (!searchTriggeredFromDropdown) { // Check the flag here!
-                const suggestions = getSuggestions(lowerQuery); // getSuggestions uses threshold 0.5 for words
+                const suggestions = getSuggestions(lowerQuery);
 
                 if (suggestions.length > 0) {
                     const suggestionDiv = document.createElement('div');
-                    suggestionDiv.id = 'noResultsMessage'; // Reusing for consistent styling
+                    suggestionDiv.id = 'noResultsMessage';
                     suggestionDiv.className = 'suggestion-message';
 
                     let suggestionHtml = `<p>No direct results found for "<strong>${query}</strong>".</p>`;
