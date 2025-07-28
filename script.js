@@ -1078,7 +1078,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ADD these three functions:
     function getSuggestions(query) {
         let suggestions = new Set(); // Use a Set directly to handle uniqueness and automatically remove duplicates
-
+        const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'all'; //get search mode
+        
         // 1. Get individual word suggestions (e.g., "thyroid" from "thoyroid" or "thyr")
         // Use the fuseWordSuggestions with its loose threshold (0.3-0.5) and minMatchCharLength (2-3)
         const wordLevelSuggestions = fuseWordSuggestions.search(query, { limit: 10 }); // Adjust limit as needed
@@ -1095,10 +1096,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // 3. Get full biomarker name suggestions
         // Use fuseBiomarkers with a slightly looser threshold for suggestions (e.g., 0.4)
-        const biomarkerNameSuggestions = fuseBiomarkers.search(query, { threshold: 0.4, limit: 10 }); // Adjust limit as needed
-        biomarkerNameSuggestions.forEach(result => {
-            suggestions.add(result.item.biomarkerName); // 'biomarkerName' is the original case biomarker name
-        });
+        if (searchMode === 'all') {
+            const biomarkerNameSuggestions = fuseBiomarkers.search(query, { threshold: 0.4, limit: 10 });
+            biomarkerNameSuggestions.forEach(result => {
+                suggestions.add(result.item.biomarkerName);
+            });
+        }
 
         // Convert Set to Array for display
         let finalSuggestions = Array.from(suggestions);
@@ -1902,7 +1905,7 @@ function initializeBiomarkerSearch() {
 // initializeBiomarkerSearch();
 
     window.filterContent = function () {
-        const query = searchInput.value.trim().toLowerCase();
+        const query = searchInput.value.trim()
         const lowerQuery = query.toLowerCase(); 
 
         // Clear old messages
