@@ -97,10 +97,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     background-color: #d7f5dc;
                     border: 2px solid #28a745;
                     border-radius: 8px;
-                    padding: 16 px 20px;
+                    padding: 16px 20px; /* Corrected typo from '16 px' to '16px' */
                     margin-bottom: 20px;
-                    width: 620px;
+                    width: 620px; /* This is the initial/collapsed width */
                     position: relative;
+                    overflow: hidden; /* Important for containing flex children and smooth transitions */
+                    transition: width 0.3s ease, height 0.3s ease, max-width 0.3s ease, min-height 0.3s ease, border-color 0.3s, background-color 0.3s;
+                    display: flex;
+                    flex-direction: row;
+                    align-items: flex-start;
+                    min-height: auto; /* Allow content to dictate natural height when collapsed */
+                    height: auto; /* Let content define height normally */
                 }
 
                 .panel-header {
@@ -133,6 +140,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     background-color: #fff;
                     padding: 12px 16px;
                     border-radius: 4px;
+                    flex-shrink: 0; 
+                    width: 600px; 
+                    min-height: 200px; 
+                    transition: min-height 0.1s ease; 
+                }
+
+                .panel-container.panel-expanded .panel-content {
+                    width: 400px;
+                }
+
+                .panel-content.adapt-height {
+                    min-height: var(--biomarker-details-height, 200px); /* Custom property for dynamic height */
+                    /* Ensure any specific static min-height is overridden by this */
+                }
+                
+                .panel-container .panel-content:not(:has(.biomarker-details-container.has-active-biomarker)) {
+                    min-height: auto; /* Ensure panel-content can shrink if no active biomarker details */
                 }
 
                 
@@ -172,27 +196,51 @@ document.addEventListener('DOMContentLoaded', function() {
                 .biomarker-details-container {
                     margin-top: 15px;
                     padding-left: 20px;
+                    display: flex;
+                    flex-direction: column; 
+                    flex-grow: 1; 
+                    max-width: 0; 
+                    overflow: hidden;
+                    opacity: 0; 
+                    transition: max-width 0.3s ease-out, opacity 0.3s ease-out, max-height 0.3s ease-out;
+                    max-height: 0; 
+                    overflow-y: hidden;
+                    padding-bottom: 0; 
+                    padding-top: 0; 
+                    box-sizing: border-box;
                 }
                 
                 .biomarker-detail-expanded {
-                    display: none;
                     border: 2px solid #007bff;
                     background-color: #ffffffff;
                     border-radius: 6px;
                     padding: 12px;
                     margin-bottom: 15px;
-                    animation: slideDown 0.3s ease-out;
+                    display: block; 
+                    animation: none; 
+                     
+                    padding: 12px; 
                 }
 
                 .biomarker-detail-expanded.invalid-biomarker {
-                    display: none;
+                    display: block;
                     border: 2px solid #dc3545;
                     background-color: #ffffffff;
                     animation: slideDown 0.3s ease-out;
                 }
+
+                .biomarker-detail-expanded.active {
+                    border-left: 4px solid #007bff; /* Or whatever color you want for active */
+                    background-color: #f0f8ff; /* Active background */
+                }
                 
-                .biomarker-detail-expanded.show {
-                    display: block;
+                .biomarker-detail-expanded.invalid-biomarker.active {
+                    border-left: 4px solid #dc3545;
+                    background-color: #ffeaea;
+                }
+
+                .panel-container .panel-content:not(.matching-height) { /* Use a class added by JS */
+                    min-height: auto; 
                 }
                 
                 @keyframes slideDown {
@@ -297,11 +345,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 .panel-container {
                 width: 620px;
                 margin: 0 auto 20px auto;
-                transition: max-width 0.3s ease;
+                position: relative; 
+                overflow: hidden; 
+                transition: max-width 0.3s ease, min-height 0.3s ease, border-color 0.3s, background-color 0.3s; 
+                display: flex; 
+                flex-direction: row; 
+                align-items: flex-start; 
                 }
 
                 .panel-container.panel-expanded {
                     width: 1200px; 
+                    min-height: auto; 
+                    height: auto; 
+                }
+
+                .panel-container.panel-expanded .biomarker-details-container {
+                    max-width: 745px; /* The width the right section takes when expanded */
+                    opacity: 1; /* Make it fully visible */
+                    max-height: 1000px; 
+
+                    overflow-y: auto; 
+                    padding-bottom: 12px; 
+                    padding-top: 12px; 
                 }
 
                 .panel-wrapper {
