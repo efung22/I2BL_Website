@@ -1028,7 +1028,7 @@ document.addEventListener('DOMContentLoaded', function() {
             case '#ffff00':
             // case '#fff200':
                 colorClass = 'yellow';
-                statusIcon = '<img src="YellowQuestion.jpg" alt="?" class="status-icon-img yellow" />';
+                statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
                 tooltipText = 'Panel Might Be Able To Be Performed';
                 break;
             case '#ff0000':
@@ -1050,7 +1050,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tooltipText = 'Panel Cannot Be Performed';
                 } else if (backgroundColor.includes('ffff00') || backgroundColor.includes('fff200')) {
                 colorClass = 'yellow';
-                statusIcon = '<img src="YellowQuestion.jpg" alt="?" class="status-icon-img yellow" />';
+                statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
                 tooltipText = 'Panel Might be able to be performed';
                 } else {
                 colorClass = 'green';
