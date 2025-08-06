@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
    let allContentData = [];
    let biomarkerUrlMap = new Map();
+   let biomarkerColorMap = new Map();
    let fusePanels;
    let fuseBiomarkers;
    let fuseWordSuggestions;
@@ -19,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
    
    let searchTimeout;
    // Your Google Apps Script deployment URL (replace with your actual URL)
-   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCZJAfjsgECIOctZPQCPi8ASDDLQZlq8CGuSuPy3HCPk9qqS3H21AYn_55uybPq7o49Q/exec'; // Using Version 4 of "Bioassay Getter (Attached)" - EF
+   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz9JyN4AVCyp8QqoCgNt0v1tbMUONuEHbli8hVbvmpQSnuHq6IYLwC_e3SvS1AR11wzvg/exec'; // Using Version 4 of "Bioassay Getter (Attached)" - EF
 
    // Cache configuration
    const CACHE_KEY = 'labcorp_data_cache';
@@ -59,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 .panel-status-wrapper {
                     position: absolute;
-                    top: 16px;
+                    top: 23px;
                     right: 20px;
                     display: inline-block;
                     cursor: default;
@@ -114,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     align-items: center;
                     gap: 10px;
                     margin-bottom: 4px;
+                    padding-right: 150px;
                 }
 
                 .panel-title {
@@ -121,6 +123,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     font-size: 20px;
                     font-weight: bold;
                     margin: 0;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    max-width: 420px;
+                    line-height: 1.2;
                 }
 
 
@@ -215,17 +221,23 @@ document.addEventListener('DOMContentLoaded', function() {
                     border-radius: 6px;
                     padding: 12px;
                     margin-bottom: 15px;
-                    display: block; 
+                    display: none; /* Hidden by default */
                     animation: none; 
-                     
-                    padding: 12px; 
+                }
+                
+                .biomarker-detail-expanded.show {
+                    display: block; /* Show when .show class is added */
                 }
 
                 .biomarker-detail-expanded.invalid-biomarker {
-                    display: block;
+                    display: none; /* Hidden by default */
                     border: 2px solid #dc3545;
                     background-color: #ffffffff;
                     animation: slideDown 0.3s ease-out;
+                }
+                
+                .biomarker-detail-expanded.invalid-biomarker.show {
+                    display: block; /* Show when .show class is added */
                 }
 
                 .biomarker-detail-expanded.active {
@@ -457,6 +469,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     color: #dc3545;
                 }
 
+                .status-icon-img {
+                    width: 20px;
+                    height: 20px;
+                    display: inline-block;
+                }
+
             </style>
         `;
         
@@ -464,38 +482,51 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Helper function to check if biomarker is valid
-    function isValidBiomarker(biomarkerName, loincCode) {
-        // Check if biomarker contains "Comment"
-        if (biomarkerName.toLowerCase().includes('comment')) {
+    function isValidBiomarker(biomarkerName, loincCode, rowIndex, biomarkerColumnIndex) {
+        // Check if we have the necessary parameters for color validation
+        if (typeof rowIndex === 'undefined' || typeof biomarkerColumnIndex === 'undefined') {
+            console.warn('Missing rowIndex or biomarkerColumnIndex for biomarker validation:', biomarkerName);
             return false;
         }
-        
-        // Check if biomarker has LOINC code
-        if (!loincCode || loincCode.trim() === '') {
+
+        // Get the color from biomarkerColorMap using row and column indices
+        // biomarkerColorMap structure: { rowIndex: { columnIndex: color } }
+        const rowColors = biomarkerColorMap.get(rowIndex.toString());
+        if (!rowColors) {
+            console.log(`No color data found for row ${rowIndex}, biomarker: ${biomarkerName}`);
             return false;
         }
+
+        const color = rowColors[biomarkerColumnIndex.toString()];
+        console.log(`Checking biomarker "${biomarkerName}" at row ${rowIndex}, column ${biomarkerColumnIndex}: color = ${color}`);
         
-        // Check if biomarker exists in biomarkerUrlMap (from "Filtered Biomarkers w/ Assays" sheet)
-        const biomarkerKey = biomarkerName.toLowerCase();
-        if (!biomarkerUrlMap.has(biomarkerKey)) {
-            return false;
+        // Valid biomarkers must have green color (#00ff00)
+        if (color && color.toLowerCase() === '#00ff00') {
+            console.log(`Valid biomarker: ${biomarkerName}`);
+            return true;
         }
-        
-        return true;
+
+        console.log(`Invalid biomarker: ${biomarkerName} (color: ${color})`);
+        return false;
     }
+
 
 
    // Toggle individual biomarker details
    // Modified toggleBiomarkerDetails function to maintain display order
     function toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer) {
+        console.log('toggleBiomarkerDetails called with:', biomarkerName, panelContainer.id);
         const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
         let detailsContainer = document.getElementById(biomarkerKey);
+        console.log('Looking for details container with key:', biomarkerKey, 'Found:', detailsContainer);
 
         if (detailsContainer) {
             const isVisible = detailsContainer.classList.contains('show');
+            console.log('Details container exists, currently visible:', isVisible);
             if (isVisible) {
                 detailsContainer.classList.remove('show');
                 biomarkerElement.classList.remove('expanded');
+                console.log('Hiding biomarker details');
 
                 const anyExpanded = panelContainer.querySelector('.biomarker-detail-expanded.show');
                 if (!anyExpanded) {
@@ -505,12 +536,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 detailsContainer.classList.add('show');
                 biomarkerElement.classList.add('expanded');
                 panelContainer.classList.add('panel-expanded');
+                console.log('Showing biomarker details');
             }
         } else {
+            console.log('Creating new biomarker details element');
             detailsContainer = createBiomarkerDetailsElement(biomarkerName, biomarkerData, biomarkerKey);
 
             let biomarkerDetailsContainer = panelContainer.querySelector('.biomarker-details-container');
             if (!biomarkerDetailsContainer) {
+                console.log('Creating new biomarker details container');
                 biomarkerDetailsContainer = document.createElement('div');
                 biomarkerDetailsContainer.className = 'biomarker-details-container';
                 panelContainer.appendChild(biomarkerDetailsContainer);
@@ -524,14 +558,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let inserted = false;
             for (let i = 0; i < existingDetails.length; i++) {
-                const detailId = existingDetails[i].id;
-                const matchIndex = allClickables.findIndex(el => `${panelContainer.id}-${el.getAttribute('data-biomarker').replace(/\s+/g, '-')}` === detailId);
-                if (matchIndex > thisIndex) {
-                    biomarkerDetailsContainer.insertBefore(detailsContainer, existingDetails[i]);
+                const detail = existingDetails[i];
+                const detailId = detail.id;
+
+                const matchIndex = allClickables.findIndex(el =>
+                    `${panelContainer.id}-${el.getAttribute('data-biomarker').replace(/\s+/g, '-')}` === detailId
+                );
+
+                if (matchIndex > thisIndex && detail.parentNode === biomarkerDetailsContainer) {
+                    biomarkerDetailsContainer.insertBefore(detailsContainer, detail);
                     inserted = true;
                     break;
                 }
             }
+
 
             if (!inserted) {
                 biomarkerDetailsContainer.appendChild(detailsContainer);
@@ -557,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
         detailsDiv.id = elementId;
         detailsDiv.className = 'biomarker-detail-expanded';
 
-        const isValid = isValidBiomarker(biomarkerName, biomarkerData?.loinc);
+        const isValid = isValidBiomarker(biomarkerName, biomarkerData?.loinc, biomarkerData?.rowIndex, biomarkerData?.biomarkerColumnIndex);
         if (!isValid) {
             detailsDiv.classList.add('invalid-biomarker');
         }
@@ -678,13 +718,21 @@ document.addEventListener('DOMContentLoaded', function() {
     biomarkerElements.forEach(biomarkerElement => {
         const biomarkerName = biomarkerElement.getAttribute('data-biomarker');
         const loincCode = biomarkerElement.getAttribute('data-loinc');
+        const rowIndex = biomarkerElement.getAttribute('data-row-index');
+        const biomarkerColumnIndex = biomarkerElement.getAttribute('data-biomarker-column-index');
         const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
         
         let detailsContainer = document.getElementById(biomarkerKey);
 
+        const biomarkerData = {
+            loinc: loincCode,
+            rowIndex: parseInt(rowIndex),
+            biomarkerColumnIndex: parseInt(biomarkerColumnIndex)
+        };
+
         if (!detailsContainer) {
             // Create the details if they don't exist
-            toggleBiomarkerDetails(biomarkerElement, biomarkerName, { loinc: loincCode }, panelContainer);
+            toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer);
             anyExpanded = true;
         } else if (!detailsContainer.classList.contains('show')) {
             // Show if hidden
@@ -786,6 +834,13 @@ document.addEventListener('DOMContentLoaded', function() {
                // Parse cached data
                biomarkerUrlMap = parseBiomarkersData(cachedData.biomarkersData);
                allContentData = parseLabcorpData(cachedData.labcorpData, biomarkerUrlMap);
+               // Convert biomarkerColorMap to a Map for easier access
+               biomarkerColorMap = new Map();
+               const rawColorMap = cachedData.biomarkerColorMap || {};
+               Object.keys(rawColorMap).forEach(rowIndex => {
+                   biomarkerColorMap.set(rowIndex, rawColorMap[rowIndex]);
+               });
+               console.log("Biomarker color map loaded from cache:", biomarkerColorMap);
                
                renderInitialParagraphs();
                console.log('Data loaded from cache successfully');
@@ -805,6 +860,7 @@ document.addEventListener('DOMContentLoaded', function() {
            }
            
            const data = await response.json();
+           console.log("Raw response from server:", data);
            
            if (!data.success) {
                throw new Error(data.error || 'Unknown error from Apps Script');
@@ -820,6 +876,13 @@ document.addEventListener('DOMContentLoaded', function() {
            // Parse the data
            biomarkerUrlMap = parseBiomarkersData(data.data.biomarkersData);
            allContentData = parseLabcorpData(data.data.labcorpData, biomarkerUrlMap);
+           // Convert biomarkerColorMap to a Map for easier access
+           biomarkerColorMap = new Map();
+           const rawColorMap = data.data.biomarkerColorMap || {};
+           Object.keys(rawColorMap).forEach(rowIndex => {
+               biomarkerColorMap.set(rowIndex, rawColorMap[rowIndex]);
+           });
+           console.log("Biomarker color map loaded:", biomarkerColorMap);
            
            renderInitialParagraphs();
            
@@ -958,40 +1021,40 @@ document.addEventListener('DOMContentLoaded', function() {
            const backgroundColor = row[row.length - 1]?.toLowerCase() || ''; // The color appended in Apps Script
 
             let colorClass = 'green';
-            let statusIcon = '<span class="status-icon green">✔</span>';
+            let statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
             let tooltipText = 'Panel Can Be Performed';
 
             switch (backgroundColor) {
             case '#ffff00':
             // case '#fff200':
                 colorClass = 'yellow';
-                statusIcon = '<span class="status-icon yellow">?</span>';
+                statusIcon = '<img src="YellowQuestion.jpg" alt="?" class="status-icon-img yellow" />';
                 tooltipText = 'Panel Might Be Able To Be Performed';
                 break;
             case '#ff0000':
             // case '#ea9999':
                 colorClass = 'red';
-                statusIcon = '<span class="status-icon red">X</span>';
+                statusIcon = '<img src="RedX.png" alt="X" class="status-icon-img red" />';
                 tooltipText = 'Panel Cannot Be Performed';
                 break;
             case '#00ff00':
             // case '#d9ead3':
                 colorClass = 'green';
-                statusIcon = '<span class="status-icon green">✔</span>';
+                statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
                 tooltipText = 'Panel Can Be Performed';
                 break;
             default:
                 if (backgroundColor.includes('ff0000') || backgroundColor.includes('ea9999')) {
                 colorClass = 'red';
-                statusIcon = '<span class="status-icon red">X</span>';
+                statusIcon = '<img src="RedX.png" alt="X" class="status-icon-img red" />';
                 tooltipText = 'Panel Cannot Be Performed';
                 } else if (backgroundColor.includes('ffff00') || backgroundColor.includes('fff200')) {
                 colorClass = 'yellow';
-                statusIcon = '<span class="status-icon yellow">?</span>';
+                statusIcon = '<img src="YellowQuestion.jpg" alt="?" class="status-icon-img yellow" />';
                 tooltipText = 'Panel Might be able to be performed';
                 } else {
                 colorClass = 'green';
-                statusIcon = '<span class="status-icon green">✔</span>';
+                statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
                 tooltipText = 'Panel Can Be Performed';
                 }
             }
@@ -1021,14 +1084,16 @@ document.addEventListener('DOMContentLoaded', function() {
                    biomarkers.push(biomarkerName);
                    biomarkerData.push({
                        name: biomarkerName,
-                       loinc: loincCode
+                       loinc: loincCode,
+                       rowIndex: i - 1, // Subtract 1 because we skip header row, so data row 1 becomes index 0
+                       biomarkerColumnIndex: j * 2 // Biomarker columns are indexed by 2 (0, 2, 4, 6, etc.)
                    });
                }
            }
            
            // Create formatted biomarker display with click handlers
            const formattedBiomarkers = biomarkerData.map(biomarker => {
-               let biomarkerHtml = `<span class="biomarker-clickable" data-biomarker="${biomarker.name}" data-loinc="${biomarker.loinc}">${biomarker.name}</span>`;
+               let biomarkerHtml = `<span class="biomarker-clickable" data-biomarker="${biomarker.name}" data-loinc="${biomarker.loinc}" data-row-index="${biomarker.rowIndex}" data-biomarker-column-index="${biomarker.biomarkerColumnIndex}">${biomarker.name}</span>`;
                
                // Add LOINC code if available
                if (biomarker.loinc) {
@@ -2167,24 +2232,17 @@ function initializeBiomarkerSearch() {
             paragraphContainer.appendChild(panelContainer);
         });
         
-        // Add click event listeners to biomarker elements AND apply conditional styling
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('biomarker-clickable')) {
-                const biomarkerName = e.target.getAttribute('data-biomarker');
-                const loincCode = e.target.getAttribute('data-loinc');
-                const panelContainer = e.target.closest('.panel-container');
-                
-                toggleBiomarkerDetails(e.target, biomarkerName, { loinc: loincCode }, panelContainer);
-            }
-        });
+        // Remove this duplicate event listener - it will be handled by the one added later
         
         // Apply conditional styling to all biomarker elements
         const allBiomarkerElements = document.querySelectorAll('.biomarker-clickable');
         allBiomarkerElements.forEach(element => {
             const biomarkerName = element.getAttribute('data-biomarker');
             const loincCode = element.getAttribute('data-loinc');
+            const rowIndex = element.getAttribute('data-row-index');
+            const biomarkerColumnIndex = element.getAttribute('data-biomarker-column-index');
             
-            if (!isValidBiomarker(biomarkerName, loincCode)) {
+            if (!isValidBiomarker(biomarkerName, loincCode, parseInt(rowIndex), parseInt(biomarkerColumnIndex))) {
                 element.classList.add('invalid-biomarker');
             }
         });
@@ -2248,11 +2306,21 @@ function initializeBiomarkerSearch() {
         // Re-enable biomarker click expansion
         document.addEventListener('click', function(e) {
             if (e.target.classList.contains('biomarker-clickable')) {
+                console.log('Biomarker clicked:', e.target.getAttribute('data-biomarker'));
                 const biomarkerName = e.target.getAttribute('data-biomarker');
                 const loincCode = e.target.getAttribute('data-loinc');
+                const rowIndex = e.target.getAttribute('data-row-index');
+                const biomarkerColumnIndex = e.target.getAttribute('data-biomarker-column-index');
                 const panelContainer = e.target.closest('.panel-container');
 
-                toggleBiomarkerDetails(e.target, biomarkerName, { loinc: loincCode }, panelContainer);
+                const biomarkerData = {
+                    loinc: loincCode,
+                    rowIndex: parseInt(rowIndex),
+                    biomarkerColumnIndex: parseInt(biomarkerColumnIndex)
+                };
+
+                console.log('Calling toggleBiomarkerDetails with:', biomarkerName, biomarkerData, panelContainer);
+                toggleBiomarkerDetails(e.target, biomarkerName, biomarkerData, panelContainer);
             }
         });
 
