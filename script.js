@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     border: 2px solid #28a745;
                     border-radius: 8px;
                     padding: 16px 20px; /* Corrected typo from '16 px' to '16px' */
-                    margin-bottom: 20px;
+                    margin: 0 auto 20px auto;
                     width: 620px; /* This is the initial/collapsed width */
                     position: relative;
                     overflow: hidden; /* Important for containing flex children and smooth transitions */
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     padding: 12px 16px;
                     border-radius: 4px;
                     flex-shrink: 0; 
-                    width: 600px; 
+                    width: 580px; 
                     min-height: 200px; 
                     transition: min-height 0.1s ease; 
                 }
@@ -353,16 +353,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
 
-                .panel-container {
-                width: 620px;
-                margin: 0 auto 20px auto;
-                position: relative; 
-                overflow: hidden; 
-                transition: max-width 0.3s ease, min-height 0.3s ease, border-color 0.3s, background-color 0.3s; 
-                display: flex; 
-                flex-direction: row; 
-                align-items: flex-start; 
-                }
+                /* Duplicate .panel-container definition removed to prevent conflicts */
 
                 .panel-container.panel-expanded {
                     width: 1200px; 
@@ -1863,142 +1854,93 @@ function addBiomarkerSearchStyles() {
 }
 
 function filterPanelsOnly() {
-    const query = searchInput.value.trim().toLowerCase();
+    const query = searchInput.value.trim();
+    const lowerQuery = query.toLowerCase();
     const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
 
     // Remove biomarker results and search summaries
-    document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage')
+    document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
         .forEach(el => el.remove());
 
-    if (query === '') {
+    if (lowerQuery === '') {
         allParagraphs.forEach(p => p.classList.add('hide'));
         return;
     }
 
-    let found = false;
-    allParagraphs.forEach(p => {
-        const keyword = p.getAttribute('data-keyword') || '';
-        const category = p.getAttribute('data-category') || '';
+    if (!fusePanels) {
+        console.warn("Fuse.js instances not initialized yet. Cannot perform search.");
+        const noResultsDiv = document.createElement('div');
+        noResultsDiv.id = 'noResultsMessage';
+        noResultsDiv.innerHTML = `<p style="text-align: center; color: red; font-style: italic;">Search is not ready. Please wait for data to load or refresh.</p>`;
+        paragraphContainer.appendChild(noResultsDiv);
+        return;
+    }
 
-        if (keyword.includes(query) || category.includes(query)) {
-            p.classList.remove('hide');
+    const searchThreshold = searchTriggeredFromDropdown ? 0.2 : 0.1;
+    
+    // Use Fuse.js to search only panel names (keywords), CPT codes, and test numbers
+    const currentPanelOptions = {
+        keys: ['keyword', 'cpt', 'testNumber'], // Only search panel-related fields, NOT biomarkers
+        threshold: searchThreshold,
+        includeScore: true,
+        ignoreLocation: true,
+        findAllMatches: true
+    };
+
+    const searchFusePanels = new Fuse(allContentData, currentPanelOptions);
+    const panelResults = searchFusePanels.search(lowerQuery);
+
+    // Hide all panels initially
+    allParagraphs.forEach(p => p.classList.add('hide'));
+
+    let found = false;
+    
+    // Show only panels that match the search query in their name/keyword
+    panelResults.forEach(result => {
+        const panelElement = document.querySelector(`[data-keyword="${result.item.keyword}"]`);
+        if (panelElement) {
+            panelElement.classList.remove('hide');
             found = true;
-        } else {
-            p.classList.add('hide');
         }
     });
 
     if (!found) {
-        const noResultsDiv = document.createElement('div');
-        noResultsDiv.id = 'noResultsMessage';
-        noResultsDiv.innerHTML = `
-            <p style="text-align: center; color: #666; font-style: italic;">
-                No matching panel results for "${query}"<br>
-                <small>Try searching for panel names or categories</small>
-            </p>`;
-        paragraphContainer.appendChild(noResultsDiv);
+        // Try suggestions if no direct matches and not from dropdown
+        if (!searchTriggeredFromDropdown) {
+            const suggestions = getSuggestions(lowerQuery);
+            
+            if (suggestions.length > 0) {
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.id = 'noResultsMessage';
+                suggestionDiv.className = 'suggestion-message';
+
+                let suggestionHtml = `<p>No direct panel results found for "<strong>${query}</strong>".</p>`;
+                if (suggestions.length === 1) {
+                    const suggestedTerm = suggestions[0];
+                    suggestionHtml += `<p>Did you mean: <a href="#" onclick="searchInput.value = '${suggestedTerm}'; filterContent(); return false;">${suggestedTerm}</a>?</p>`;
+                } else {
+                    suggestionHtml += `<p>Search instead for: `;
+                    suggestionHtml += suggestions.map(term => `<a href="#" onclick="searchInput.value = '${term}'; filterContent(); return false;">${term}</a>`).join(', ');
+                    suggestionHtml += `?</p>`;
+                }
+                suggestionDiv.innerHTML = suggestionHtml;
+                paragraphContainer.appendChild(suggestionDiv);
+            } else {
+                const noResultsDiv = document.createElement('div');
+                noResultsDiv.id = 'noResultsMessage';
+                noResultsDiv.innerHTML = `
+                    <p style="text-align: center; color: #666; font-style: italic;">
+                        No matching panel results for "${query}"<br>
+                        <small>Try searching for panel names or categories</small>
+                    </p>`;
+                paragraphContainer.appendChild(noResultsDiv);
+            }
+        }
     }
 }
 
 
-// Enhanced filter function that shows both panels and biomarkers
-function filterContentWithBiomarkers() {
-    const query = searchInput.value.trim().toLowerCase();
-    
-    // Remove any existing biomarker results
-    const existingBiomarkerResults = document.querySelectorAll('.biomarker-result-container');
-    existingBiomarkerResults.forEach(result => result.remove());
-    
-    // Remove existing search summary
-    const existingSummary = document.getElementById('search-results-summary');
-    if (existingSummary) {
-        existingSummary.remove();
-    }
-    
-    // Early return for empty query
-    if (query === '') {
-        const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
-        allParagraphs.forEach(p => p.classList.add('hide'));
-        const existingNoResultsMessage = document.getElementById('noResultsMessage');
-        if (existingNoResultsMessage) {
-            existingNoResultsMessage.remove();
-        }
-        return;
-    }
-    
-    // Find matching biomarkers
-    const matchingBiomarkers = findMatchingBiomarkers(query);
-    
-    // Find matching panels (use original logic)
-    const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
-    let matchingPanels = 0;
-    
-    const toShow = [];
-    const toHide = [];
-    
-    allParagraphs.forEach(p => {
-        const keyword = p.getAttribute('data-keyword') || '';
-        const category = p.getAttribute('data-category') || '';
-        const biomarkers = p.getAttribute('data-biomarkers') || '';
-        
-        const matchesPanel = keyword.includes(query);
-        const matchesCategory = category.includes(query);
-        const matchesBiomarkers = biomarkers.includes(query);
-        
-        if (matchesPanel || matchesCategory || matchesBiomarkers) {
-            toShow.push(p);
-            matchingPanels++;
-        } else {
-            toHide.push(p);
-        }
-    });
-    
-    // Apply panel visibility changes
-    toShow.forEach(p => p.classList.remove('hide'));
-    toHide.forEach(p => p.classList.add('hide'));
-    
-    // Add biomarker results at the top
-    if (matchingBiomarkers.length > 0) {
-        matchingBiomarkers.forEach((biomarkerInfo, index) => {
-            const biomarkerResult = createBiomarkerResult(biomarkerInfo, index);
-            paragraphContainer.insertBefore(biomarkerResult, paragraphContainer.firstChild);
-        });
-    }
-    
-    // Add search results summary
-    const totalResults = matchingBiomarkers.length + matchingPanels;
-    if (totalResults > 0) {
-        const summaryDiv = document.createElement('div');
-        summaryDiv.id = 'search-results-summary';
-        summaryDiv.className = 'search-results-summary';
-        summaryDiv.innerHTML = `
-            <strong>Search Results for "${query}":</strong> 
-            ${matchingBiomarkers.length} biomarker(s) and ${matchingPanels} panel(s) found
-        `;
-        paragraphContainer.insertBefore(summaryDiv, paragraphContainer.firstChild);
-    }
-    
-    // Handle no results message
-    const existingNoResultsMessage = document.getElementById('noResultsMessage');
-    
-    if (totalResults === 0) {
-        if (!existingNoResultsMessage) {
-            const noResultsDiv = document.createElement('div');
-            noResultsDiv.id = 'noResultsMessage';
-            noResultsDiv.innerHTML = `
-                <p style="text-align: center; color: #666; font-style: italic;">
-                    No matching results found for "${query}"<br>
-                    <small>Try searching for panel names, categories, or biomarker names</small>
-                </p>
-            `;
-            paragraphContainer.appendChild(noResultsDiv);
-        }
-    } else {
-        if (existingNoResultsMessage) {
-            existingNoResultsMessage.remove();
-        }
-    }
-}
+// Old filterContentWithBiomarkers function removed - now using filterContentWithBiomarkersEnhanced
 
 // Make functions globally available
 window.toggleBiomarkerExpansion = toggleBiomarkerExpansion;
@@ -2016,15 +1958,7 @@ function initializeBiomarkerSearch() {
     const checkboxAll = document.getElementById('searchModeAll');
     const checkboxPanels = document.getElementById('searchModePanels');
 
-    // Use selected radio button to determine mode
-    window.filterContent = function () {
-        const searchPanelsOnly = checkboxPanels.checked;
-        if (searchPanelsOnly) {
-            filterPanelsOnly();
-        } else {
-            filterContentWithBiomarkers();
-        }
-    };
+    // Use selected radio button to determine mode - this is handled by the main filterContent function now
 
     }
 
@@ -2057,140 +1991,163 @@ function initializeBiomarkerSearch() {
         }
 
         const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'all';
-        let foundDirectMatches = []; 
-
-        const searchThreshold = searchTriggeredFromDropdown ? 0.2 : 0.1;
         
-        // --- PHASE 1: Perform Fuse.js search for direct results ---
-        const currentPanelOptions = {
-            keys: ['keyword', 'cpt', 'testNumber'], // Add more keys if panels can be searched by them
-            threshold: searchThreshold,
-            includeScore: true,
-            ignoreLocation: true, // Important for partial word matches
-            findAllMatches: true // Important for partial word matches
-        };
-        const currentBiomarkerOptions = {
-            keys: ['biomarkerName', 'loincCode', 'description', 'assayType'], // Add more keys if biomarkers can be searched by them
-            threshold: searchThreshold,
-            includeScore: true,
-            ignoreLocation: true,
-            findAllMatches: true
-        };
-
-        const searchFusePanels = new Fuse(allContentData, currentPanelOptions);
-        const strictPanelResults = searchFusePanels.search(lowerQuery);
-
-        let strictBiomarkerResults = [];
-        if (searchMode === 'all') {
-            const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => ({
-                biomarkerName: b.biomarkerName,
-                originalKey: b.biomarkerName.toLowerCase(),
-                loincCode: b.loincCode, // Include loincCode in searchable keys for biomarkers
-                description: biomarkerUrlMap.get(b.biomarkerName.toLowerCase())?.description || '',
-                assayType: biomarkerUrlMap.get(b.biomarkerName.toLowerCase())?.assayType || ''
-            }));
-            const searchFuseBiomarkers = new Fuse(biomarkerNamesArrayForSearch, currentBiomarkerOptions);
-            strictBiomarkerResults = searchFuseBiomarkers.search(lowerQuery);
-        }
-
-        // Collect direct panel matches
-        strictPanelResults.forEach(result => {
-            // Find the actual DOM element for this panel
-            const panelElement = document.querySelector(`[data-keyword="${result.item.keyword}"]`);
-            if (panelElement) {
-                foundDirectMatches.push({ type: 'panel', element: panelElement, data: result.item });
-            }
-        });
-
-        // Collect direct biomarker matches
-        strictBiomarkerResults.forEach(result => {
-            const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
-            if (biomarkerInfo) {
-                foundDirectMatches.push({ type: 'biomarker', data: biomarkerInfo });
-            }
-        });
-
-        let matchingPanelsCount = 0;
-        const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
-
-        // Hide all panels initially
-        allParagraphs.forEach(p => p.classList.add('hide'));
-
-        // --- PHASE 2: Display direct matches if found ---
-        if (foundDirectMatches.length > 0) {
-            // Sort results to prioritize panels then biomarkers
-            foundDirectMatches.sort((a, b) => {
-            // 1. Primary sort: by Fuse.js score (lower is better)
-            if (a.data.score !== undefined && b.data.score !== undefined) {
-                if (a.data.score !== b.data.score) {
-                    return a.data.score - b.data.score;
-                }
-            }
-
-            // 2. Secondary sort: if scores are equal, prioritize panels over biomarkers
-            if (a.type === 'panel' && b.type === 'biomarker') return -1;
-            if (a.type === 'biomarker' && b.type === 'panel') return 1;
-
-            // 3. Tertiary sort: if scores and types are equal, sort alphabetically by name (optional)
-            const nameA = a.type === 'panel' ? a.data.keyword : a.data.biomarkerName;
-            const nameB = b.type === 'panel' ? b.data.keyword : b.data.biomarkerName;
-            return nameA.localeCompare(nameB);
-        });
-
-            // Display matching panels
-            foundDirectMatches.filter(m => m.type === 'panel').forEach(match => {
-                match.element.classList.remove('hide');
-                matchingPanelsCount++;
-            });
-
-            // Display matching biomarkers (already converted to biomarkerResult HTML)
-            foundDirectMatches.filter(m => m.type === 'biomarker').forEach((match, index) => {
-                const biomarkerResult = createBiomarkerResult(match.data, index);
-                const firstPanel = paragraphContainer.querySelector('.panel-wrapper'); // Insert before the first panel wrapper
-                if (firstPanel) {
-                    paragraphContainer.insertBefore(biomarkerResult, firstPanel.parentElement);
-                } else {
-                    paragraphContainer.insertBefore(biomarkerResult, paragraphContainer.firstChild);
-                }
-            });
-
+        // Route to the appropriate search function based on search mode
+        if (searchMode === 'panels') {
+            // Search panels only - only show panels that have the search term in their name
+            filterPanelsOnly();
         } else {
-            // --- PHASE 3: No strict direct matches, offer suggestions, ONLY IF NOT FROM DROPDOWN ---
-            if (!searchTriggeredFromDropdown) { // Check the flag here!
-                const suggestions = getSuggestions(lowerQuery);
-
-                if (suggestions.length > 0) {
-                    const suggestionDiv = document.createElement('div');
-                    suggestionDiv.id = 'noResultsMessage';
-                    suggestionDiv.className = 'suggestion-message';
-
-                    let suggestionHtml = `<p>No direct results found for "<strong>${query}</strong>".</p>`;
-                    if (suggestions.length === 1) {
-                        const suggestedTerm = suggestions[0];
-                        suggestionHtml += `<p>Did you mean: <a href="#" onclick="searchInput.value = '${suggestedTerm}'; filterContent(); return false;">${suggestedTerm}</a>?</p>`;
-                    } else {
-                        suggestionHtml += `<p>Search instead for: `;
-                        suggestionHtml += suggestions.map(term => `<a href="#" onclick="searchInput.value = '${term}'; filterContent(); return false;">${term}</a>`).join(', ');
-                        suggestionHtml += `?</p>`;
-                    }
-                    suggestionDiv.innerHTML = suggestionHtml;
-                    paragraphContainer.appendChild(suggestionDiv);
-                } else {
-                    // Absolutely no matches and no suggestions
-                    const noResultsDiv = document.createElement('div');
-                    noResultsDiv.id = 'noResultsMessage';
-                    noResultsDiv.innerHTML = `
-                        <p style="text-align: center; color: #666; font-style: italic;">
-                            No matching results found for "${query}"<br>
-                            <small>Try searching for panel names${searchMode === 'all' ? ', categories, or biomarker names' : ' or categories'}</small>
-                        </p>
-                    `;
-                    paragraphContainer.appendChild(noResultsDiv);
-                }
-            }
+            // Search panels and biomarkers - show panels with search term in name AND panels that have biomarkers with search term
+            filterContentWithBiomarkersEnhanced(lowerQuery);
         }
+        
         searchTriggeredFromDropdown = false; // Reset flag after search completes
     };
+
+// Enhanced function to search both panels and biomarkers using Fuse.js
+function filterContentWithBiomarkersEnhanced(lowerQuery) {
+    let foundDirectMatches = []; 
+
+    const searchThreshold = searchTriggeredFromDropdown ? 0.2 : 0.1;
+    
+    // --- PHASE 1: Perform Fuse.js search for direct results ---
+    const currentPanelOptions = {
+        keys: ['keyword', 'cpt', 'testNumber'], // Add more keys if panels can be searched by them
+        threshold: searchThreshold,
+        includeScore: true,
+        ignoreLocation: true, // Important for partial word matches
+        findAllMatches: true // Important for partial word matches
+    };
+    const currentBiomarkerOptions = {
+        keys: ['biomarkerName', 'loincCode', 'description', 'assayType'], // Add more keys if biomarkers can be searched by them
+        threshold: searchThreshold,
+        includeScore: true,
+        ignoreLocation: true,
+        findAllMatches: true
+    };
+
+    const searchFusePanels = new Fuse(allContentData, currentPanelOptions);
+    const strictPanelResults = searchFusePanels.search(lowerQuery);
+
+    // Search biomarkers and find panels that contain matching biomarkers
+    const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => ({
+        biomarkerName: b.biomarkerName,
+        originalKey: b.biomarkerName.toLowerCase(),
+        loincCode: b.loincCode, // Include loincCode in searchable keys for biomarkers
+        description: biomarkerUrlMap.get(b.biomarkerName.toLowerCase())?.description || '',
+        assayType: biomarkerUrlMap.get(b.biomarkerName.toLowerCase())?.assayType || ''
+    }));
+    const searchFuseBiomarkers = new Fuse(biomarkerNamesArrayForSearch, currentBiomarkerOptions);
+    const strictBiomarkerResults = searchFuseBiomarkers.search(lowerQuery);
+
+    // Collect direct panel matches (panels with matching names)
+    strictPanelResults.forEach(result => {
+        // Find the actual DOM element for this panel
+        const panelElement = document.querySelector(`[data-keyword="${result.item.keyword}"]`);
+        if (panelElement) {
+            foundDirectMatches.push({ type: 'panel', element: panelElement, data: result.item });
+        }
+    });
+
+    // Collect panels that contain matching biomarkers
+    const panelsWithMatchingBiomarkers = new Set();
+    strictBiomarkerResults.forEach(result => {
+        const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
+        if (biomarkerInfo) {
+            // Add biomarker result
+            foundDirectMatches.push({ type: 'biomarker', data: biomarkerInfo });
+            
+            // Also add all panels that contain this biomarker
+            biomarkerInfo.panels.forEach(panelRef => {
+                const panelElement = document.querySelector(`[data-keyword="${panelRef.panelData.keyword}"]`);
+                if (panelElement && !panelsWithMatchingBiomarkers.has(panelRef.panelData.keyword)) {
+                    panelsWithMatchingBiomarkers.add(panelRef.panelData.keyword);
+                    foundDirectMatches.push({ type: 'panel', element: panelElement, data: panelRef.panelData });
+                }
+            });
+        }
+    });
+
+    let matchingPanelsCount = 0;
+    const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
+
+    // Hide all panels initially
+    allParagraphs.forEach(p => p.classList.add('hide'));
+
+    // --- PHASE 2: Display direct matches if found ---
+    if (foundDirectMatches.length > 0) {
+        // Sort results to prioritize panels then biomarkers
+        foundDirectMatches.sort((a, b) => {
+        // 1. Primary sort: by Fuse.js score (lower is better)
+        if (a.data.score !== undefined && b.data.score !== undefined) {
+            if (a.data.score !== b.data.score) {
+                return a.data.score - b.data.score;
+            }
+        }
+
+        // 2. Secondary sort: if scores are equal, prioritize panels over biomarkers
+        if (a.type === 'panel' && b.type === 'biomarker') return -1;
+        if (a.type === 'biomarker' && b.type === 'panel') return 1;
+
+        // 3. Tertiary sort: if scores and types are equal, sort alphabetically by name (optional)
+        const nameA = a.type === 'panel' ? a.data.keyword : a.data.biomarkerName;
+        const nameB = b.type === 'panel' ? b.data.keyword : b.data.biomarkerName;
+        return nameA.localeCompare(nameB);
+    });
+
+        // Display matching panels
+        foundDirectMatches.filter(m => m.type === 'panel').forEach(match => {
+            match.element.classList.remove('hide');
+            matchingPanelsCount++;
+        });
+
+        // Display matching biomarkers (already converted to biomarkerResult HTML)
+        foundDirectMatches.filter(m => m.type === 'biomarker').forEach((match, index) => {
+            const biomarkerResult = createBiomarkerResult(match.data, index);
+            const firstPanel = paragraphContainer.querySelector('.panel-wrapper'); // Insert before the first panel wrapper
+            if (firstPanel) {
+                paragraphContainer.insertBefore(biomarkerResult, firstPanel.parentElement);
+            } else {
+                paragraphContainer.insertBefore(biomarkerResult, paragraphContainer.firstChild);
+            }
+        });
+
+    } else {
+        // --- PHASE 3: No strict direct matches, offer suggestions, ONLY IF NOT FROM DROPDOWN ---
+        if (!searchTriggeredFromDropdown) { // Check the flag here!
+            const suggestions = getSuggestions(lowerQuery);
+
+            if (suggestions.length > 0) {
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.id = 'noResultsMessage';
+                suggestionDiv.className = 'suggestion-message';
+
+                let suggestionHtml = `<p>No direct results found for "<strong>${searchInput.value.trim()}</strong>".</p>`;
+                if (suggestions.length === 1) {
+                    const suggestedTerm = suggestions[0];
+                    suggestionHtml += `<p>Did you mean: <a href="#" onclick="searchInput.value = '${suggestedTerm}'; filterContent(); return false;">${suggestedTerm}</a>?</p>`;
+                } else {
+                    suggestionHtml += `<p>Search instead for: `;
+                    suggestionHtml += suggestions.map(term => `<a href="#" onclick="searchInput.value = '${term}'; filterContent(); return false;">${term}</a>`).join(', ');
+                    suggestionHtml += `?</p>`;
+                }
+                suggestionDiv.innerHTML = suggestionHtml;
+                paragraphContainer.appendChild(suggestionDiv);
+            } else {
+                // Absolutely no matches and no suggestions
+                const noResultsDiv = document.createElement('div');
+                noResultsDiv.id = 'noResultsMessage';
+                noResultsDiv.innerHTML = `
+                    <p style="text-align: center; color: #666; font-style: italic;">
+                        No matching results found for "${searchInput.value.trim()}"<br>
+                        <small>Try searching for panel names, categories, or biomarker names</small>
+                    </p>
+                `;
+                paragraphContainer.appendChild(noResultsDiv);
+            }
+        }
+    }
+}
 
 
    // Modified renderInitialParagraphs function - only the relevant part
