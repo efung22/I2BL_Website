@@ -2254,6 +2254,23 @@ function initializeBiomarkerSearch() {
 function filterContentWithBiomarkersEnhanced(lowerQuery) {
     let foundDirectMatches = []; 
 
+    const exactPanelMatch = allContentData.find(panel => panel.keyword.toLowerCase() === lowerQuery);
+    if (exactPanelMatch) {
+        const panelElement = document.querySelector(`[data-keyword="${exactPanelMatch.keyword}"]`);
+        if (panelElement) {
+            panelElement.classList.remove('hide');
+            return; // Stop execution here, we found a perfect match.
+        }
+    }
+
+    // --- NEW: PHASE 1.2: Check for an exact biomarker match ---
+    const exactBiomarkerMatch = biomarkerToPanelsMap.get(lowerQuery);
+    if (exactBiomarkerMatch) {
+        const biomarkerResult = createBiomarkerResult(exactBiomarkerMatch, 0); // Create the single result
+        paragraphContainer.appendChild(biomarkerResult);
+        return; // Stop execution here, we found a perfect match.
+    }
+
     const searchThreshold = searchTriggeredFromDropdown ? 0.2 : 0.1;
     
     // --- PHASE 1: Perform Fuse.js search for direct results ---
