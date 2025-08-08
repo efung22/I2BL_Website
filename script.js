@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     align-items: flex-start;
                     min-height: auto; /* Allow content to dictate natural height when collapsed */
                     height: auto; /* Let content define height normally */
+                    box-shadow: 0 3px 10px rgba(40, 167, 69, 0.2);
                 }
 
                 .panel-header {
@@ -146,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     padding: 12px 16px;
                     border-radius: 4px;
                     flex-shrink: 0; 
-                    width: 580px; 
+                    width: 570px; 
                     min-height: 200px; 
                     transition: min-height 0.1s ease; 
                 }
@@ -423,10 +424,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     margin: 0;
                 }
 
-                .panel-content h3 {
+                .panel-container .panel-content h3 {
                     margin: 0;
+                    margin-top: 0;
                     font-size: 20px;
                     font-weight: bold;
+                    color: #000;
+                    display: flex;
+                    align-items: center;
                 }
 
                 .open-new-tab-icon {
@@ -784,6 +789,42 @@ document.addEventListener('DOMContentLoaded', function() {
                return null;
            }
            
+           // Handle compressed data
+           if (parsedItem.compressed && parsedItem.compressedData) {
+               console.log('Decompressing cached data...');
+               
+               // Check if LZ-String is available
+               if (typeof LZString === 'undefined') {
+                   console.error('LZ-String library not loaded, cannot decompress data');
+                   localStorage.removeItem(CACHE_KEY);
+                   return null;
+               }
+               
+               try {
+                   let decompressedData;
+                   
+                   if (parsedItem.aggressive) {
+                       decompressedData = LZString.decompressFromUTF16(parsedItem.compressedData);
+                   } else {
+                       decompressedData = LZString.decompress(parsedItem.compressedData);
+                   }
+                   
+                   if (!decompressedData) {
+                       throw new Error('Decompression returned null');
+                   }
+                   
+                   const data = JSON.parse(decompressedData);
+                   console.log('✅ Data decompressed successfully');
+                   return data;
+                   
+               } catch (decompressError) {
+                   console.error('❌ Error decompressing cached data:', decompressError.message);
+                   localStorage.removeItem(CACHE_KEY);
+                   return null;
+               }
+           }
+           
+           // Handle uncompressed data (backward compatibility)
            return parsedItem.data;
        } catch (error) {
            console.error('Error reading cache:', error);
@@ -794,14 +835,103 @@ document.addEventListener('DOMContentLoaded', function() {
 
    function setCachedData(data) {
        try {
+           console.log('Starting cache process...');
+           
+           // Create cache item
            const cacheItem = {
                data: data,
-               timestamp: new Date().getTime()
+               timestamp: new Date().getTime(),
+               version: '2.0'
            };
-           localStorage.setItem(CACHE_KEY, JSON.stringify(cacheItem));
-           console.log('Data cached successfully');
+           
+           // First, try without compression
+           let serializedData = JSON.stringify(cacheItem);
+           let sizeInMB = new Blob([serializedData]).size / (1024 * 1024);
+           
+           console.log(`Original data size: ${sizeInMB.toFixed(2)} MB`);
+           
+           // If data is larger than 4MB, use LZ-String compression
+           if (sizeInMB > 4) {
+               console.log('Data too large, applying LZ-String compression...');
+               
+               // Check if LZ-String is available
+               if (typeof LZString === 'undefined') {
+                   console.error('LZ-String library not loaded, cannot compress large data');
+                   return;
+               }
+               
+               const compressedData = LZString.compress(JSON.stringify(data));
+               const compressedItem = {
+                   compressedData: compressedData,
+                   timestamp: new Date().getTime(),
+                   version: '2.0',
+                   compressed: true
+               };
+               
+               serializedData = JSON.stringify(compressedItem);
+               sizeInMB = new Blob([serializedData]).size / (1024 * 1024);
+               
+               console.log(`Compressed data size: ${sizeInMB.toFixed(2)} MB`);
+               
+               // If still too large, try more aggressive compression
+               if (sizeInMB > 8) {
+                   console.log('Still too large, trying aggressive compression...');
+                   const aggressiveCompressed = LZString.compressToUTF16(JSON.stringify(data));
+                   const aggressiveItem = {
+                       compressedData: aggressiveCompressed,
+                       timestamp: new Date().getTime(),
+                       version: '2.0',
+                       compressed: true,
+                       aggressive: true
+                   };
+                   
+                   serializedData = JSON.stringify(aggressiveItem);
+                   sizeInMB = new Blob([serializedData]).size / (1024 * 1024);
+                   
+                   console.log(`Aggressively compressed data size: ${sizeInMB.toFixed(2)} MB`);
+                   
+                   if (sizeInMB > 10) {
+                       console.warn('Data still too large even with aggressive compression, skipping cache');
+                       return;
+                   }
+               }
+           }
+           
+           // Try to store the data
+           localStorage.setItem(CACHE_KEY, serializedData);
+           console.log(`✅ Data cached successfully! Size: ${sizeInMB.toFixed(2)} MB`);
+           
        } catch (error) {
-           console.error('Error caching data:', error);
+           if (error.name === 'QuotaExceededError') {
+               console.error('❌ localStorage quota exceeded. Attempting to clear space...');
+               
+               // Clear existing cache and try again
+               try {
+                   localStorage.removeItem(CACHE_KEY);
+                   
+                   // Try with maximum compression
+                   if (typeof LZString !== 'undefined') {
+                       const maxCompressed = LZString.compressToUTF16(JSON.stringify(data));
+                       const maxItem = {
+                           compressedData: maxCompressed,
+                           timestamp: new Date().getTime(),
+                           version: '2.0',
+                           compressed: true,
+                           aggressive: true
+                       };
+                       
+                       localStorage.setItem(CACHE_KEY, JSON.stringify(maxItem));
+                       console.log('✅ Data cached with maximum compression after clearing space');
+                   } else {
+                       console.error('❌ Cannot compress without LZ-String library');
+                   }
+                   
+               } catch (retryError) {
+                   console.error('❌ Failed to cache even after clearing space:', retryError.message);
+               }
+           } else {
+               console.error('❌ Error caching data:', error.message);
+           }
        }
    }
 
@@ -817,25 +947,45 @@ document.addEventListener('DOMContentLoaded', function() {
            const cachedData = getCachedData();
            
            if (cachedData) {
-               console.log('Loading data from cache...');
+               console.log('✅ Loading data from cache...');
                
                // Show loading message for cache load
                paragraphContainer.innerHTML = '<p style="text-align: center; color: #666;">Loading cached data...</p>';
                
-               // Parse cached data
-               biomarkerUrlMap = parseBiomarkersData(cachedData.biomarkersData);
-               allContentData = parseLabcorpData(cachedData.labcorpData, biomarkerUrlMap);
-               // Convert biomarkerColorMap to a Map for easier access
-               biomarkerColorMap = new Map();
-               const rawColorMap = cachedData.biomarkerColorMap || {};
-               Object.keys(rawColorMap).forEach(rowIndex => {
-                   biomarkerColorMap.set(rowIndex, rawColorMap[rowIndex]);
-               });
-               console.log("Biomarker color map loaded from cache:", biomarkerColorMap);
-               
-               renderInitialParagraphs();
-               console.log('Data loaded from cache successfully');
-               return;
+               try {
+                   // Validate cached data structure
+                   if (!cachedData.labcorpData || !cachedData.biomarkersData) {
+                       throw new Error('Invalid cached data structure - missing required data');
+                   }
+                   
+                   if (!Array.isArray(cachedData.labcorpData) || !Array.isArray(cachedData.biomarkersData)) {
+                       throw new Error('Invalid cached data structure - data is not arrays');
+                   }
+                   
+                   console.log(`📊 Cache contains ${cachedData.labcorpData.length} labcorp rows and ${cachedData.biomarkersData.length} biomarker rows`);
+                   
+                   // Parse cached data
+                   biomarkerUrlMap = parseBiomarkersData(cachedData.biomarkersData);
+                   allContentData = parseLabcorpData(cachedData.labcorpData, biomarkerUrlMap);
+                   
+                   // Convert biomarkerColorMap to a Map for easier access
+                   biomarkerColorMap = new Map();
+                   const rawColorMap = cachedData.biomarkerColorMap || {};
+                   Object.keys(rawColorMap).forEach(rowIndex => {
+                       biomarkerColorMap.set(rowIndex, rawColorMap[rowIndex]);
+                   });
+                   console.log("Biomarker color map loaded from cache:", biomarkerColorMap);
+                   
+                   renderInitialParagraphs();
+                   console.log('✅ Data loaded from cache successfully');
+                   return;
+                   
+               } catch (cacheError) {
+                   console.error('❌ Error processing cached data:', cacheError.message);
+                   console.log('🧹 Clearing corrupted cache and loading from server...');
+                   clearCache();
+                   // Continue to load from server
+               }
            }
 
            // If no cache, load from Google Apps Script
@@ -897,25 +1047,131 @@ document.addEventListener('DOMContentLoaded', function() {
        location.reload();
    };
 
-   // Add cache status indicator
-   function showCacheStatus() {
-       const cachedData = getCachedData();
-       if (cachedData) {
-           const cacheItem = JSON.parse(localStorage.getItem(CACHE_KEY));
-           const cacheAge = new Date().getTime() - cacheItem.timestamp;
+   // Add comprehensive debugging functions
+   window.debugCache = function() {
+       console.log('=== CACHE DEBUG INFO ===');
+       
+       const cachedItem = localStorage.getItem(CACHE_KEY);
+       if (!cachedItem) {
+           console.log('❌ No cache found');
+           return;
+       }
+       
+       try {
+           const parsedItem = JSON.parse(cachedItem);
+           const sizeInMB = new Blob([cachedItem]).size / (1024 * 1024);
+           const cacheAge = new Date().getTime() - parsedItem.timestamp;
            const hoursOld = Math.floor(cacheAge / (1000 * 60 * 60));
            const minutesOld = Math.floor((cacheAge % (1000 * 60 * 60)) / (1000 * 60));
            
-           console.log(`Cache status: Data is ${hoursOld}h ${minutesOld}m old`);
+           console.log(`✅ Cache exists`);
+           console.log(`📊 Size: ${sizeInMB.toFixed(2)} MB`);
+           console.log(`⏰ Age: ${hoursOld}h ${minutesOld}m`);
+           console.log(`📦 Compressed: ${parsedItem.compressed ? 'YES' : 'NO'}`);
+           console.log(`🔥 Aggressive: ${parsedItem.aggressive ? 'YES' : 'NO'}`);
+           console.log(`📅 Created: ${new Date(parsedItem.timestamp).toLocaleString()}`);
+           console.log(`✅ Valid: ${cacheAge < CACHE_DURATION ? 'YES' : 'NO (expired)'}`);
+           console.log(`🔧 Version: ${parsedItem.version || '1.0'}`);
            
-           // Optional: Add visual indicator
+           // Test decompression
+           if (parsedItem.compressed) {
+               console.log('🧪 Testing decompression...');
+               if (typeof LZString === 'undefined') {
+                   console.log('❌ LZ-String not available');
+               } else {
+                   try {
+                       const testData = parsedItem.aggressive ? 
+                           LZString.decompressFromUTF16(parsedItem.compressedData) :
+                           LZString.decompress(parsedItem.compressedData);
+                       console.log('✅ Decompression test passed');
+                   } catch (e) {
+                       console.log('❌ Decompression test failed:', e.message);
+                   }
+               }
+           }
+           
+       } catch (error) {
+           console.log('❌ Error parsing cache:', error.message);
+       }
+       
+       console.log('=== END DEBUG INFO ===');
+   };
+
+   window.testLZString = function() {
+       console.log('=== LZ-STRING TEST ===');
+       
+       if (typeof LZString === 'undefined') {
+           console.log('❌ LZ-String library not loaded');
+           return;
+       }
+       
+       console.log('✅ LZ-String library loaded');
+       
+       // Test compression
+       const testData = { test: 'Hello World'.repeat(1000) };
+       const original = JSON.stringify(testData);
+       const compressed = LZString.compress(original);
+       const aggressive = LZString.compressToUTF16(original);
+       
+       console.log(`📊 Original size: ${(original.length / 1024).toFixed(2)} KB`);
+       console.log(`📦 Compressed size: ${(compressed.length / 1024).toFixed(2)} KB`);
+       console.log(`🔥 Aggressive size: ${(aggressive.length / 1024).toFixed(2)} KB`);
+       
+       // Test decompression
+       const decompressed = LZString.decompress(compressed);
+       const decompressedAggressive = LZString.decompressFromUTF16(aggressive);
+       
+       console.log(`✅ Decompression works: ${decompressed === original}`);
+       console.log(`✅ Aggressive decompression works: ${decompressedAggressive === original}`);
+       
+       console.log('=== END LZ-STRING TEST ===');
+   };
+
+   // Add cache status indicator - shows immediately when page loads
+   function showCacheStatus() {
+       try {
+           const cachedItem = localStorage.getItem(CACHE_KEY);
            const statusDiv = document.createElement('div');
-           statusDiv.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #e8f5e8; padding: 5px 10px; border-radius: 5px; font-size: 12px; color: #666; z-index: 1000;';
-           statusDiv.innerHTML = `Using cached data (${hoursOld}h ${minutesOld}m old)`;
+           
+           if (cachedItem) {
+               const parsedItem = JSON.parse(cachedItem);
+               const cacheAge = new Date().getTime() - parsedItem.timestamp;
+               const hoursOld = Math.floor(cacheAge / (1000 * 60 * 60));
+               const minutesOld = Math.floor((cacheAge % (1000 * 60 * 60)) / (1000 * 60));
+               const sizeInMB = new Blob([cachedItem]).size / (1024 * 1024);
+               
+               const isExpired = cacheAge > CACHE_DURATION;
+               const compressionType = parsedItem.compressed ? (parsedItem.aggressive ? 'Max' : 'LZ') : 'None';
+               
+               console.log(`📦 Cache found: ${hoursOld}h ${minutesOld}m old, ${sizeInMB.toFixed(2)}MB, Compression: ${compressionType}`);
+               
+               // Green background for valid cache, orange for expired
+               const bgColor = isExpired ? '#fff3cd' : '#d4edda';
+               const borderColor = isExpired ? '#ffeaa7' : '#c3e6cb';
+               const textColor = isExpired ? '#856404' : '#155724';
+               const icon = isExpired ? '⚠️' : '📦';
+               
+               statusDiv.style.cssText = `position: fixed; top: 10px; right: 10px; background: ${bgColor}; border: 1px solid ${borderColor}; color: ${textColor}; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; z-index: 10000; box-shadow: 0 2px 4px rgba(0,0,0,0.1);`;
+               statusDiv.innerHTML = `${icon} Cache ${isExpired ? 'expired' : 'active'} (${hoursOld}h ${minutesOld}m)`;
+           } else {
+               console.log('🌐 No cache found, will load from server');
+               
+               // Yellow background for no cache
+               statusDiv.style.cssText = 'position: fixed; top: 10px; right: 10px; background: #fff3cd; border: 1px solid #ffeaa7; color: #856404; padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: 500; z-index: 10000; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+               statusDiv.innerHTML = '🌐 Loading from server...';
+           }
+           
            document.body.appendChild(statusDiv);
            
-           // Remove after 3 seconds
-           setTimeout(() => statusDiv.remove(), 3000);
+           // Remove after 5 seconds
+           setTimeout(() => {
+               if (statusDiv && statusDiv.parentNode) {
+                   statusDiv.remove();
+               }
+           }, 5000);
+           
+       } catch (error) {
+           console.error('❌ Error showing cache status:', error);
        }
    }
 
@@ -1808,19 +2064,9 @@ function addBiomarkerSearchStyles() {
                 margin-left: 5px;
             }
             
-            /* Enhanced panel styling to match biomarker styling */
-            .panel-container {
-                border: 2px solid #28a745;
-                background: #f0f8f0;
-                box-shadow: 0 3px 10px rgba(40, 167, 69, 0.2);
-            }
+            /* Enhanced panel styling consolidated with main .panel-container definition */
             
-            .panel-container .panel-content h3 {
-                color: #28a745;
-                margin-top: 0;
-                display: flex;
-                align-items: center;
-            }
+            /* .panel-container .panel-content h3 styles consolidated with earlier definition */
             
             .panel-container .panel-content h3:before {
                 content: "PANEL";
@@ -2216,8 +2462,11 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
 
    // MODIFIED BLOCK START
    addExpandableStyles(); // Keep this as it is
+   
+   // Show cache status immediately when page loads
+   showCacheStatus();
+   
    loadContent().then(() => {
-        showCacheStatus();
         buildBiomarkerToPanelsMap(); // Build the mapping after content is loaded
 
         // New: Populate allSuggestionWords for word-level suggestions
