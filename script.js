@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 .panel-status-wrapper {
                     position: absolute;
-                    top: 23px;
+                    top: 18px;
                     right: 20px;
                     display: inline-block;
                     cursor: default;
@@ -149,7 +149,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     flex-shrink: 0; 
                     width: 570px; 
                     min-height: 200px; 
-                    transition: min-height 0.1s ease; 
+                    transition: min-height 0.1s ease;
+                    position: relative; 
                 }
 
                 .panel-container.panel-expanded .panel-content {
@@ -2426,30 +2427,33 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
             panelContainer.classList.add('panel-container', 'content-paragraph', 'hide', item.colorClass || 'green');
 
             panelWrapper.appendChild(panelContainer);
-            paragraphContainer.appendChild(panelWrapper);
 
             panelContainer.setAttribute('data-keyword', item.keyword);
             panelContainer.setAttribute('data-category', item.category || '');
             panelContainer.setAttribute('data-biomarkers', item.biomarkers ? item.biomarkers.join(' ') : '');
             panelContainer.id = `panel-${index}`;
-            
-            // Create panel content
+
+            // Create the main panel content
             const panelContent = document.createElement('div');
             panelContent.classList.add('panel-content');
             panelContent.innerHTML = item.paragraph;
 
+            // Create the status icon wrapper
             const statusIconWrapper = document.createElement('div');
             statusIconWrapper.classList.add('panel-status-wrapper');
-
             statusIconWrapper.innerHTML = `
                 ${item.statusIcon}
                 <div class="panel-tooltip">${item.tooltipText}</div>
             `;
 
+            // Append the icon wrapper to the panelContent box
             panelContent.appendChild(statusIconWrapper);
-            
+
+            // Append the panel content (which now contains the icon) to the panel container
             panelContainer.appendChild(panelContent);
-            paragraphContainer.appendChild(panelContainer);
+
+            // Append the final panel wrapper to the main container
+            paragraphContainer.appendChild(panelWrapper);
         });
         
         // Remove this duplicate event listener - it will be handled by the one added later
