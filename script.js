@@ -472,6 +472,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     display: inline-block;
                 }
 
+                /* Inline status for biomarker panels */
+                .biomarker-panel-status {
+                    display: inline-block;
+                    margin-left: 6px;
+                    position: relative;
+                    cursor: default;
+                    vertical-align: text-bottom;
+                }
+
+                .biomarker-panel-status .status-icon-img {
+                    width: 16px;
+                    height: 16px;
+                    vertical-align: text-bottom;
+                }
+
+                .biomarker-panel-status:hover .panel-tooltip {
+                    visibility: visible;
+                    opacity: 1;
+                }
+
             </style>
         `;
         
@@ -672,7 +692,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <ul style="list-style: none; padding-left: 0;">
             `;
 
-            panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers }) => {
+            panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers, statusIcon, tooltipText }) => {
                 detailsContent += `
                     <li class="associated-panel-container">
                     <div class="associated-panel-content">
@@ -689,7 +709,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <p class="associated-panel-meta">
                             ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
                             ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
-                            ${biomarkers?.length || 0} biomarkers
+                            ${biomarkers?.length || 0} biomarkers<span class="biomarker-panel-status">${statusIcon}<div class="panel-tooltip">${tooltipText}</div></span>
                         </p>
                     </div>
                 </li>`;
@@ -1739,7 +1759,7 @@ function createBiomarkerResult(biomarkerInfo, index) {
 
                 </div>
                 <div class="panel-quick-info">
-                    ${panelData.cpt ? `CPT: ${panelData.cpt}` : ''}${panelData.cpt && panelData.testNumber ? ' | ' : ''}${panelData.testNumber ? `Test #: ${panelData.testNumber}` : ''}${(panelData.cpt || panelData.testNumber) && panelData.biomarkers ? ' | ' : ''}${panelData.biomarkers ? `${panelData.biomarkers.length} biomarkers` : ''}
+                    ${panelData.cpt ? `CPT: ${panelData.cpt}` : ''}${panelData.cpt && panelData.testNumber ? ' | ' : ''}${panelData.testNumber ? `Test #: ${panelData.testNumber}` : ''}${(panelData.cpt || panelData.testNumber) && panelData.biomarkers ? ' | ' : ''}${panelData.biomarkers ? `${panelData.biomarkers.length} biomarkers` : ''}<span class="biomarker-panel-status">${panelData.statusIcon || ''}<div class="panel-tooltip">${panelData.tooltipText || ''}</div></span>
                 </div>
                 <div class="panel-expanded-content" id="expanded-panel-${panelRef.panelIndex}-${index}" style="display: none;">
                     <!-- Panel details will be inserted here when expanded -->
