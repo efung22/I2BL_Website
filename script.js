@@ -20,12 +20,12 @@ document.addEventListener('DOMContentLoaded', function() {
    
    let searchTimeout;
    // Your Google Apps Script deployment URL (replace with your actual URL)
-   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz9JyN4AVCyp8QqoCgNt0v1tbMUONuEHbli8hVbvmpQSnuHq6IYLwC_e3SvS1AR11wzvg/exec'; // Using Version 4 of "Bioassay Getter (Attached)" - EF
+   const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz9JyN4AVCyp8QqoCgNt0v1tbMUONuEHbli8hVbvmpQSnuHq6IYLwC_e3SvS1AR11wzvg/exec'; // Using Version 12 of Bioassay Getter (Attached)
 
    // Cache configuration
    const CACHE_KEY = 'labcorp_data_cache';
    const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-   // const CACHE_DURATION = 60 * 1000; // super short duration for debugging
+   // const CACHE_DURATION = 1000; // 1 sec for debugging
 
 
     // Modified addExpandableStyles function - ADD these new styles to your existing styles
@@ -56,6 +56,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 .panel-container.red {
                     background-color: #ffeaea;
                     border-color: #dc3545;
+                }
+
+                .panel-container.yellowgreen {
+                    background-color: #eafccfff;
+                    border-color: #adff2f;
                 }
 
                 .panel-status-wrapper {
@@ -517,8 +522,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const color = rowColors[biomarkerColumnIndex.toString()];
         console.log(`Checking biomarker "${biomarkerName}" at row ${rowIndex}, column ${biomarkerColumnIndex}: color = ${color}`);
         
-        // Valid biomarkers must have green color (#00ff00)
-        if (color && color.toLowerCase() === '#00ff00') {
+        // Valid biomarkers
+        if (color && (color.toLowerCase() === '#b7e1cd' || color.toLowerCase() === '#d9d9d9')) {
             console.log(`Valid biomarker: ${biomarkerName}`);
             return true;
         }
@@ -1290,40 +1295,46 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let colorClass = 'green';
             let statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
-            let tooltipText = 'Panel Can Be Performed';
+            let tooltipText = 'Fully Compatible Biomarker';
 
             switch (backgroundColor) {
-            case '#ffff00':
-            // case '#fff200':
-                colorClass = 'yellow';
-                statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
-                tooltipText = 'Panel Might Be Able To Be Performed';
-                break;
-            case '#ff0000':
-            // case '#ea9999':
+            case '#ffffff': // all white means invalid
                 colorClass = 'red';
                 statusIcon = '<img src="RedX.png" alt="X" class="status-icon-img red" />';
-                tooltipText = 'Panel Cannot Be Performed';
+                tooltipText = 'Incompatible Panel';
                 break;
-            case '#00ff00':
-            // case '#d9ead3':
+            case '#e6fff2':
+                colorClass = 'yellow';
+                statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
+                tooltipText = 'Semi-Compatible Panel';
+                break;
+            case '#cdf9e4':
+                colorClass = 'yellowgreen';
+                statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
+                tooltipText = 'Mostly Compatible Panel';
+                break;
+            case '#b7e1cd':
                 colorClass = 'green';
                 statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
-                tooltipText = 'Panel Can Be Performed';
+                tooltipText = 'Fully Compatible Panel';
                 break;
             default:
-                if (backgroundColor.includes('ff0000') || backgroundColor.includes('ea9999')) {
+                if (backgroundColor.includes('ffffff')) {
                 colorClass = 'red';
                 statusIcon = '<img src="RedX.png" alt="X" class="status-icon-img red" />';
-                tooltipText = 'Panel Cannot Be Performed';
-                } else if (backgroundColor.includes('ffff00') || backgroundColor.includes('fff200')) {
+                tooltipText = 'Incompatible Panel';
+                } else if (backgroundColor.includes('e6fff2')) {
                 colorClass = 'yellow';
                 statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
-                tooltipText = 'Panel Might be able to be performed';
+                tooltipText = 'Semi-Compatible Panel';
+                } else if (backgroundColor.includes('cdf9e4')) {
+                colorClass = 'yellowgreen';
+                statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
+                tooltipText = 'Mostly Compatible Panel';
                 } else {
                 colorClass = 'green';
                 statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
-                tooltipText = 'Panel Can Be Performed';
+                tooltipText = 'Fully Compatible Panel';
                 }
             }
            
@@ -1402,13 +1413,6 @@ document.addEventListener('DOMContentLoaded', function() {
                paragraphContent += `<button class="collapse-all-button" onclick="collapseAllBiomarkers(this.closest('.panel-container'))">Collapse All Biomarkers</button>`;
                paragraphContent += `</div>`;
            }
-           
-        //    //For Debugging Purposes
-        //    if (panelName.toLowerCase().includes('lipid')) {
-        //         console.log('DEBUG: forcing yellow for Lipid panel');
-        //         colorClass = 'red';
-        //         colorMessage = 'MAYBE: Panel Might be Able to be Performed';
-        //     }
 
            
            contentData.push({
