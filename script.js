@@ -612,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
    // Modified createBiomarkerDetailsElement function
     function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
-        const biomarkerKey = biomarkerName.toLowerCase();
+        const biomarkerKey = biomarkerName.trim().toLowerCase();
         const biomarkerInfo = biomarkerUrlMap.get(biomarkerKey);
         
         const detailsDiv = document.createElement('div');
@@ -629,10 +629,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!isValid) {
             detailsContent += `
                 <div class="detail-item">
-                    <span class="detail-label">Status:</span>
-                    <span class="detail-value" style="color: #dc3545; font-weight: bold;">Invalid Biomarker</span>
+                    <span class="detail-label">Assay Type:</span>
+                    <span class="detail-value" style="color: #dc3545; font-weight: bold;">
+                        ${biomarkerInfo && biomarkerInfo.assayType ? biomarkerInfo.assayType : 'Unknown'}
+                    </span>
+                </div>`;
+        } else {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Assay Type:</span>
+                    <span class="detail-value" style="color: #28a745; font-weight: bold;">
+                        ${biomarkerInfo && biomarkerInfo.assayType ? biomarkerInfo.assayType : 'Unknown'}
+                    </span>
                 </div>`;
         }
+
 
         detailsContent += `
             <div class="detail-item">
@@ -1235,7 +1246,7 @@ document.addEventListener('DOMContentLoaded', function() {
            const kitUrl = kitUrlColumn >= 0 && row[kitUrlColumn] ? row[kitUrlColumn].toString().trim() : '';
            
            if (name) {
-               urlMap.set(name.toLowerCase(), {
+               urlMap.set(name.trim().toLowerCase(), {
                    url: url || '#',
                    description: description || '',
                    assayType: assayType || '',
@@ -1589,7 +1600,7 @@ function buildBiomarkerToPanelsMap() {
     allContentData.forEach((panelData, panelIndex) => {
         if (panelData.biomarkerData && panelData.biomarkerData.length > 0) {
             panelData.biomarkerData.forEach(biomarker => {
-                const biomarkerKey = biomarker.name.toLowerCase();
+                const biomarkerKey = biomarker.name.trim().toLowerCase();
                 
                 if (!biomarkerToPanelsMap.has(biomarkerKey)) {
                     biomarkerToPanelsMap.set(biomarkerKey, {
@@ -1631,7 +1642,7 @@ function createBiomarkerResult(biomarkerInfo, index) {
     biomarkerContainer.id = `biomarker-result-${index}`;
     
     // Get additional biomarker details from biomarkerUrlMap
-    const biomarkerKey = biomarkerInfo.biomarkerName.toLowerCase();
+    const biomarkerKey = biomarkerInfo.biomarkerName.trim().toLowerCase();
     const additionalInfo = biomarkerUrlMap.get(biomarkerKey);
     
     let biomarkerContent = `
