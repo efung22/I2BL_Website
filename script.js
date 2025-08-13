@@ -258,6 +258,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     background-color: #f5f5f5;
                 }
 
+                .biomarker-detail-expanded.gray-biomarker {
+                    border: 2px solid #999999;
+                    background-color: #f9f9f9;
+                }
+                
+                .biomarker-detail-expanded.gray-biomarker.show {
+                    display: block;
+                }
+
+                .biomarker-detail-expanded.gray-biomarker.active {
+                    border-left: 4px solid #999999;
+                    background-color: #f0f0f0;
+                }
+
                 .panel-container .panel-content:not(.matching-height) { /* Use a class added by JS */
                     min-height: auto; 
                 }
@@ -332,14 +346,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 .biomarker-clickable {
-                    color: #007bff;
+                    color: #28a745;
                     cursor: pointer;
                     text-decoration: underline;
                     transition: color 0.2s;
                 }
                 
                 .biomarker-clickable:hover {
-                    color: #0056b3;
+                    color: #218838;
                 }
                 
                 .biomarker-clickable.expanded {
@@ -358,6 +372,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 .biomarker-clickable.invalid-biomarker.expanded {
                     color: #000000;
+                    font-weight: bold;
+                }
+
+                /* NEW STYLES FOR GRAY BIOMARKERS */
+                .biomarker-clickable.gray-biomarker {
+                    color: #999999;
+                }
+                
+                .biomarker-clickable.gray-biomarker:hover {
+                    color: #666666;
+                }
+                
+                .biomarker-clickable.gray-biomarker.expanded {
+                    color: #999999;
                     font-weight: bold;
                 }
 
@@ -646,8 +674,16 @@ document.addEventListener('DOMContentLoaded', function() {
         detailsDiv.className = 'biomarker-detail-expanded';
 
         const isValid = isValidBiomarker(biomarkerName, biomarkerData?.loinc, biomarkerData?.rowIndex, biomarkerData?.biomarkerColumnIndex);
+        
+        // Check if biomarker is gray (#d9d9d9)
+        const rowColors = biomarkerColorMap.get(biomarkerData?.rowIndex?.toString());
+        const biomarkerColor = rowColors ? rowColors[biomarkerData?.biomarkerColumnIndex?.toString()] : null;
+        const isGrayBiomarker = biomarkerColor && biomarkerColor.toLowerCase() === '#d9d9d9';
+        
         if (!isValid) {
             detailsDiv.classList.add('invalid-biomarker');
+        } else if (isGrayBiomarker) {
+            detailsDiv.classList.add('gray-biomarker');
         }
 
         let detailsContent = `<h4>${biomarkerName}</h4>`;
@@ -658,6 +694,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="detail-label">Assay Type:</span>
                     <span class="detail-value" style="color: #000000; font-weight: bold;">
                         ${biomarkerInfo && biomarkerInfo.assayType ? biomarkerInfo.assayType : 'Unknown'}
+                    </span>
+                </div>`;
+        } else if (isGrayBiomarker) {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Assay Type:</span>
+                    <span class="detail-value" style="color: #999999; font-weight: bold;">
+                        Description
                     </span>
                 </div>`;
         } else {
@@ -722,6 +766,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         </ul>
                     </div>
                 </div>`;
+        // } else if (isGrayBiomarker) {
+        //     // Show "Description" for gray biomarkers
+        //     detailsContent += `
+        //         <div class="detail-item">
+        //             <span class="detail-label">Assay Type:</span>
+        //             <span class="detail-value">Description</span>
+        //         </div>`;
         } else if (biomarkerInfo && biomarkerInfo.assayType) {
             // Show regular assay type for non-calculation biomarkers
             detailsContent += `
@@ -1463,19 +1514,19 @@ document.addEventListener('DOMContentLoaded', function() {
            const backgroundColor = row[row.length - 1]?.toLowerCase() || ''; // The color appended in Apps Script
 
             let colorClass = 'green';
-            let statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
-            let tooltipText = 'Fully Compatible Biomarker';
+            let statusIcon = '';
+            let tooltipText = '';
 
             switch (backgroundColor) {
             case '#ffffff': // all white means invalid
                 colorClass = 'red';
-                statusIcon = '<img src="RedX.png" alt="X" class="status-icon-img red" />';
-                tooltipText = 'Incompatible Panel';
+                // statusIcon = '<img src="RedX.png" alt="X" class="status-icon-img red" />';
+                // tooltipText = 'Incompatible Panel';
                 break;
             case '#e6fff2':
                 colorClass = 'yellow';
-                statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
-                tooltipText = 'Semi-Compatible Panel';
+                // statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
+                // tooltipText = 'Semi-Compatible Panel';
                 break;
             case '#cdf9e4':
                 colorClass = 'yellowgreen';
@@ -1490,20 +1541,20 @@ document.addEventListener('DOMContentLoaded', function() {
             default:
                 if (backgroundColor.includes('ffffff')) {
                 colorClass = 'red';
-                statusIcon = '<img src="RedX.png" alt="X" class="status-icon-img red" />';
-                tooltipText = 'Incompatible Panel';
+                // statusIcon = '<img src="RedX.png" alt="X" class="status-icon-img red" />';
+                // tooltipText = 'Incompatible Panel';
                 } else if (backgroundColor.includes('e6fff2')) {
                 colorClass = 'yellow';
-                statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
-                tooltipText = 'Semi-Compatible Panel';
+                // statusIcon = '<img src="YellowQuestion.png" alt="?" class="status-icon-img yellow" />';
+                // tooltipText = 'Semi-Compatible Panel';
                 } else if (backgroundColor.includes('cdf9e4')) {
                 colorClass = 'yellowgreen';
                 statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
                 tooltipText = 'Mostly Compatible Panel';
                 } else {
                 colorClass = 'green';
-                statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
-                tooltipText = 'Fully Compatible Panel';
+                // statusIcon = '<img src="GreenCheck.png" alt="✔" class="status-icon-img green" />';
+                // tooltipText = 'Fully Compatible Panel';
                 }
             }
            
@@ -1541,7 +1592,17 @@ document.addEventListener('DOMContentLoaded', function() {
            
            // Create formatted biomarker display with click handlers
            const formattedBiomarkers = biomarkerData.map(biomarker => {
-               let biomarkerHtml = `<span class="biomarker-clickable" data-biomarker="${biomarker.name}" data-loinc="${biomarker.loinc}" data-row-index="${biomarker.rowIndex}" data-biomarker-column-index="${biomarker.biomarkerColumnIndex}">${biomarker.name}</span>`;
+               // Get biomarker color to determine styling
+               const rowColors = biomarkerColorMap.get(biomarker.rowIndex.toString());
+               const biomarkerColor = rowColors ? rowColors[biomarker.biomarkerColumnIndex.toString()] : null;
+               
+               // Determine CSS class based on color
+               let biomarkerClass = 'biomarker-clickable';
+               if (biomarkerColor && biomarkerColor.toLowerCase() === '#d9d9d9') {
+                   biomarkerClass += ' gray-biomarker';
+               }
+               
+               let biomarkerHtml = `<span class="${biomarkerClass}" data-biomarker="${biomarker.name}" data-loinc="${biomarker.loinc}" data-row-index="${biomarker.rowIndex}" data-biomarker-column-index="${biomarker.biomarkerColumnIndex}">${biomarker.name}</span>`;
                
                // Add LOINC code if available
                if (biomarker.loinc) {
@@ -2495,6 +2556,10 @@ function initializeBiomarkerSearch() {
 
 // Enhanced function to search both panels and biomarkers using Fuse.js
 function filterContentWithBiomarkersEnhanced(lowerQuery) {
+    // Remove any existing biomarker results and search summaries
+    document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
+        .forEach(el => el.remove());
+        
     let foundDirectMatches = []; 
 
     const exactPanelMatch = allContentData.find(panel => panel.keyword.toLowerCase() === lowerQuery);
@@ -2506,11 +2571,16 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
         }
     }
 
-    // --- NEW: PHASE 1.2: Check for an exact biomarker match ---
+    // --- PHASE 1.2: Check for an exact biomarker match and show panels containing it ---
     const exactBiomarkerMatch = biomarkerToPanelsMap.get(lowerQuery);
     if (exactBiomarkerMatch) {
-        const biomarkerResult = createBiomarkerResult(exactBiomarkerMatch, 0); // Create the single result
-        paragraphContainer.appendChild(biomarkerResult);
+        // Show all panels that contain this biomarker instead of showing the biomarker itself
+        exactBiomarkerMatch.panels.forEach(panelRef => {
+            const panelElement = document.querySelector(`[data-keyword="${panelRef.panelData.keyword}"]`);
+            if (panelElement) {
+                panelElement.classList.remove('hide');
+            }
+        });
         return; // Stop execution here, we found a perfect match.
     }
 
@@ -2568,10 +2638,7 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
     strictBiomarkerResults.forEach(result => {
         const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
         if (biomarkerInfo) {
-            // Add biomarker result
-            foundDirectMatches.push({ type: 'biomarker', data: biomarkerInfo });
-            
-            // Also add all panels that contain this biomarker
+            // Only add panels that contain this biomarker, not the biomarker itself
             biomarkerInfo.panels.forEach(panelRef => {
                 const panelElement = document.querySelector(`[data-keyword="${panelRef.panelData.keyword}"]`);
                 if (panelElement && !panelsWithMatchingBiomarkers.has(panelRef.panelData.keyword)) {
@@ -2590,40 +2657,25 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
 
     // --- PHASE 2: Display direct matches if found ---
     if (foundDirectMatches.length > 0) {
-        // Sort results to prioritize panels then biomarkers
+        // Sort results by Fuse.js score (lower is better) and then alphabetically
         foundDirectMatches.sort((a, b) => {
-        // 1. Primary sort: by Fuse.js score (lower is better)
-        if (a.data.score !== undefined && b.data.score !== undefined) {
-            if (a.data.score !== b.data.score) {
-                return a.data.score - b.data.score;
+            // 1. Primary sort: by Fuse.js score (lower is better)
+            if (a.data.score !== undefined && b.data.score !== undefined) {
+                if (a.data.score !== b.data.score) {
+                    return a.data.score - b.data.score;
+                }
             }
-        }
 
-        // 2. Secondary sort: if scores are equal, prioritize panels over biomarkers
-        if (a.type === 'panel' && b.type === 'biomarker') return -1;
-        if (a.type === 'biomarker' && b.type === 'panel') return 1;
+            // 2. Secondary sort: if scores are equal, sort alphabetically by panel name
+            const nameA = a.data.keyword;
+            const nameB = b.data.keyword;
+            return nameA.localeCompare(nameB);
+        });
 
-        // 3. Tertiary sort: if scores and types are equal, sort alphabetically by name (optional)
-        const nameA = a.type === 'panel' ? a.data.keyword : a.data.biomarkerName;
-        const nameB = b.type === 'panel' ? b.data.keyword : b.data.biomarkerName;
-        return nameA.localeCompare(nameB);
-    });
-
-        // Display matching panels
+        // Display matching panels only
         foundDirectMatches.filter(m => m.type === 'panel').forEach(match => {
             match.element.classList.remove('hide');
             matchingPanelsCount++;
-        });
-
-        // Display matching biomarkers (already converted to biomarkerResult HTML)
-        foundDirectMatches.filter(m => m.type === 'biomarker').forEach((match, index) => {
-            const biomarkerResult = createBiomarkerResult(match.data, index);
-            const firstPanel = paragraphContainer.querySelector('.panel-wrapper'); // Insert before the first panel wrapper
-            if (firstPanel) {
-                paragraphContainer.insertBefore(biomarkerResult, firstPanel.parentElement);
-            } else {
-                paragraphContainer.insertBefore(biomarkerResult, paragraphContainer.firstChild);
-            }
         });
 
     } else {
@@ -2716,8 +2768,15 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
             const rowIndex = element.getAttribute('data-row-index');
             const biomarkerColumnIndex = element.getAttribute('data-biomarker-column-index');
             
+            // Check if biomarker is gray (#d9d9d9)
+            const rowColors = biomarkerColorMap.get(rowIndex);
+            const biomarkerColor = rowColors ? rowColors[biomarkerColumnIndex] : null;
+            const isGrayBiomarker = biomarkerColor && biomarkerColor.toLowerCase() === '#d9d9d9';
+            
             if (!isValidBiomarker(biomarkerName, loincCode, parseInt(rowIndex), parseInt(biomarkerColumnIndex))) {
                 element.classList.add('invalid-biomarker');
+            } else if (isGrayBiomarker) {
+                element.classList.add('gray-biomarker');
             }
         });
         
