@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
    let allContentData = [];
    let biomarkerUrlMap = new Map();
    let biomarkerColorMap = new Map();
+   let calculationData = []; // Store calculation data
    let fusePanels;
    let fuseBiomarkers;
    let fuseWordSuggestions;
@@ -54,8 +55,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
 
                 .panel-container.red {
-                    background-color: #ffeaea;
-                    border-color: #dc3545;
+                    background-color: #efefef;
+                    border-color: #b7b7b7;
                 }
 
                 .panel-container.yellowgreen {
@@ -238,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 .biomarker-detail-expanded.invalid-biomarker {
                     display: none; /* Hidden by default */
-                    border: 2px solid #dc3545;
+                    border: 2px solid #000000;
                     background-color: #ffffffff;
                     animation: slideDown 0.3s ease-out;
                 }
@@ -253,8 +254,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 .biomarker-detail-expanded.invalid-biomarker.active {
-                    border-left: 4px solid #dc3545;
-                    background-color: #ffeaea;
+                    border-left: 4px solid #000000;
+                    background-color: #f5f5f5;
                 }
 
                 .panel-container .panel-content:not(.matching-height) { /* Use a class added by JS */
@@ -308,6 +309,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     text-decoration: underline;
                 }
                 
+                /* Associated biomarkers styling */
+                .associated-biomarkers-list {
+                    margin: 0;
+                    padding-left: 20px;
+                    list-style-type: disc;
+                }
+                
+                .associated-biomarkers-list li {
+                    margin-bottom: 5px;
+                    line-height: 1.4;
+                }
+                
+                .associated-biomarker-name {
+                    font-weight: bold;
+                    color: #333;
+                }
+                
+                .associated-biomarker-loinc {
+                    color: #666;
+                    font-size: 0.9em;
+                }
+                
                 .biomarker-clickable {
                     color: #007bff;
                     cursor: pointer;
@@ -326,15 +349,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 /* NEW STYLES FOR INVALID BIOMARKERS */
                 .biomarker-clickable.invalid-biomarker {
-                    color: #dc3545;
+                    color: #000000;
                 }
                 
                 .biomarker-clickable.invalid-biomarker:hover {
-                    color: #c82333;
+                    color: #333333;
                 }
                 
                 .biomarker-clickable.invalid-biomarker.expanded {
-                    color: #dc3545;
+                    color: #000000;
                     font-weight: bold;
                 }
 
@@ -613,7 +636,10 @@ document.addEventListener('DOMContentLoaded', function() {
    // Modified createBiomarkerDetailsElement function
     function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
         const biomarkerKey = biomarkerName.trim().toLowerCase();
-        const biomarkerInfo = biomarkerUrlMap.get(biomarkerKey);
+        let biomarkerInfo = biomarkerUrlMap.get(biomarkerKey);
+        
+        // Verify calculation assay type based on LOINC match
+        biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, biomarkerData?.loinc);
         
         const detailsDiv = document.createElement('div');
         detailsDiv.id = elementId;
@@ -630,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function() {
             detailsContent += `
                 <div class="detail-item">
                     <span class="detail-label">Assay Type:</span>
-                    <span class="detail-value" style="color: #dc3545; font-weight: bold;">
+                    <span class="detail-value" style="color: #000000; font-weight: bold;">
                         ${biomarkerInfo && biomarkerInfo.assayType ? biomarkerInfo.assayType : 'Unknown'}
                     </span>
                 </div>`;
@@ -675,7 +701,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>`;
         }
 
-        if (biomarkerInfo && biomarkerInfo.assayType) {
+        // Add associated biomarkers if this is a calculation (without showing Assay Type)
+        if (biomarkerInfo && biomarkerInfo.assayType === 'Calculation' && biomarkerInfo.associatedBiomarkers && biomarkerInfo.associatedBiomarkers.length > 0) {
+            const associatedCount = biomarkerInfo.associatedBiomarkers.length;
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Associated Biomarkers (${associatedCount}):</span>
+                    <div class="detail-value">
+                        <ul class="associated-biomarkers-list">`;
+            
+            biomarkerInfo.associatedBiomarkers.forEach(associated => {
+                detailsContent += `
+                            <li>
+                                <span class="associated-biomarker-name">${associated.name}</span> 
+                                <span class="associated-biomarker-loinc">(LOINC: ${associated.loinc})</span>
+                            </li>`;
+            });
+            
+            detailsContent += `
+                        </ul>
+                    </div>
+                </div>`;
+        } else if (biomarkerInfo && biomarkerInfo.assayType) {
+            // Show regular assay type for non-calculation biomarkers
             detailsContent += `
                 <div class="detail-item">
                     <span class="detail-label">Assay Type:</span>
@@ -1001,8 +1049,12 @@ document.addEventListener('DOMContentLoaded', function() {
                    
                    console.log(`📊 Cache contains ${cachedData.labcorpData.length} labcorp rows and ${cachedData.biomarkersData.length} biomarker rows`);
                    
+                   // Parse calculation data if available
+                   calculationData = cachedData.calcs || [];
+                   console.log(`📊 Cache contains ${calculationData.length} calculation rows`);
+                   
                    // Parse cached data
-                   biomarkerUrlMap = parseBiomarkersData(cachedData.biomarkersData);
+                   biomarkerUrlMap = parseBiomarkersData(cachedData.biomarkersData, calculationData);
                    allContentData = parseLabcorpData(cachedData.labcorpData, biomarkerUrlMap);
                    
                    // Convert biomarkerColorMap to a Map for easier access
@@ -1048,11 +1100,15 @@ document.addEventListener('DOMContentLoaded', function() {
            console.log('Labcorp data rows:', data.data.labcorpData.length);
            console.log('Biomarkers data rows:', data.data.biomarkersData.length);
            
+           // Parse calculation data if available
+           calculationData = data.data.calcs || [];
+           console.log('Calculation data rows:', calculationData.length);
+           
            // Cache the fresh data
            setCachedData(data.data);
            
            // Parse the data
-           biomarkerUrlMap = parseBiomarkersData(data.data.biomarkersData);
+           biomarkerUrlMap = parseBiomarkersData(data.data.biomarkersData, calculationData);
            allContentData = parseLabcorpData(data.data.labcorpData, biomarkerUrlMap);
            // Convert biomarkerColorMap to a Map for easier access
            biomarkerColorMap = new Map();
@@ -1212,8 +1268,36 @@ document.addEventListener('DOMContentLoaded', function() {
        }
    }
 
+   // Helper function to verify calculation assay type based on LOINC match
+   function verifyCalculationAssayType(biomarkerInfo, actualLoinc) {
+       if (!biomarkerInfo || !biomarkerInfo.calculationLoinc || !actualLoinc) {
+           return biomarkerInfo;
+       }
+       
+       // Verify both name and LOINC match for calculation
+       if (biomarkerInfo.calculationLoinc === actualLoinc) {
+           // Confirmed match - keep as Calculation and preserve associated biomarkers
+           console.log(`✅ Verified calculation assay type for biomarker (LOINC match: ${actualLoinc})`);
+           return { 
+               ...biomarkerInfo, 
+               assayType: 'Calculation',
+               // Preserve associated biomarkers data
+               associatedBiomarkers: biomarkerInfo.associatedBiomarkers || []
+           };
+       } else {
+           // LOINC doesn't match - revert to original assay type or Unknown
+           console.log(`❌ LOINC mismatch for potential calculation: expected ${biomarkerInfo.calculationLoinc}, got ${actualLoinc}`);
+           return { 
+               ...biomarkerInfo, 
+               assayType: biomarkerInfo.originalAssayType || 'Unknown',
+               // Remove associated biomarkers since this is not a verified calculation
+               associatedBiomarkers: undefined
+           };
+       }
+   }
+
    // Parse biomarkers data to create URL mappings
-   function parseBiomarkersData(biomarkersData) {
+   function parseBiomarkersData(biomarkersData, calculationData = []) {
        const urlMap = new Map();
        
        if (!biomarkersData || biomarkersData.length < 2) {
@@ -1256,6 +1340,80 @@ document.addEventListener('DOMContentLoaded', function() {
        }
        
        console.log(`Created ${urlMap.size} biomarker mappings`);
+       
+       // Process calculation data to override assay types for matching biomarkers
+       if (calculationData && calculationData.length > 1) {
+           console.log('Processing calculation data...');
+           const calcHeaders = calculationData[0];
+           
+           // Find relevant columns in calculation data
+           const calcNameColumn = findColumnIndex(calcHeaders, ['Calculations']);
+           const calcLoincColumn = findColumnIndex(calcHeaders, ['Calculation LOINC']);
+           
+           console.log(`Calculation columns - Name: ${calcNameColumn}, LOINC: ${calcLoincColumn}`);
+           
+           if (calcNameColumn >= 0 && calcLoincColumn >= 0) {
+               // Process calculation rows (skip header)
+               for (let i = 1; i < calculationData.length; i++) {
+                   const row = calculationData[i];
+                   
+                   if (row.length === 0) continue;
+                   
+                   const calcName = row[calcNameColumn] ? row[calcNameColumn].toString().trim() : '';
+                   const calcLoinc = row[calcLoincColumn] ? row[calcLoincColumn].toString().trim() : '';
+                   
+                   if (calcName && calcLoinc) {
+                       const key = calcName.trim().toLowerCase();
+                       
+                       // Extract associated biomarkers for this calculation
+                       const associatedBiomarkers = [];
+                       
+                       // Look for biomarkers in columns C, E, G... (indices 2, 4, 6...)
+                       // and their LOINCs in columns D, F, H... (indices 3, 5, 7...)
+                       for (let colIndex = 2; colIndex < row.length; colIndex += 2) {
+                           const biomarkerName = row[colIndex] ? row[colIndex].toString().trim() : '';
+                           const biomarkerLoinc = row[colIndex + 1] ? row[colIndex + 1].toString().trim() : '';
+                           
+                           if (biomarkerName && biomarkerLoinc) {
+                               associatedBiomarkers.push({
+                                   name: biomarkerName,
+                                   loinc: biomarkerLoinc
+                               });
+                               console.log(`  - Found associated biomarker: ${biomarkerName} (LOINC: ${biomarkerLoinc})`);
+                           }
+                       }
+                       
+                       console.log(`Extracted ${associatedBiomarkers.length} associated biomarkers for ${calcName}`);
+                       
+                       // Check if this biomarker exists in our urlMap
+                       if (urlMap.has(key)) {
+                           const existingData = urlMap.get(key);
+                           // Store original assay type and mark as potential calculation
+                           urlMap.set(key, {
+                               ...existingData,
+                               originalAssayType: existingData.assayType, // Store original
+                               assayType: 'Calculation', // Tentatively set to Calculation
+                               calculationLoinc: calcLoinc, // Store for verification
+                               associatedBiomarkers: associatedBiomarkers // Store associated biomarkers
+                           });
+                           console.log(`Marked ${calcName} as potential Calculation assay type (LOINC: ${calcLoinc}) with ${associatedBiomarkers.length} associated biomarkers`);
+                       } else {
+                           // Add new entry for calculation biomarker
+                           urlMap.set(key, {
+                               url: '#',
+                               description: '',
+                               assayType: 'Calculation',
+                               kitUrl: '',
+                               calculationLoinc: calcLoinc,
+                               associatedBiomarkers: associatedBiomarkers
+                           });
+                           console.log(`Added new calculation biomarker: ${calcName} with ${associatedBiomarkers.length} associated biomarkers`);
+                       }
+                   }
+               }
+           }
+       }
+       
        return urlMap;
    }
 
@@ -1643,7 +1801,10 @@ function createBiomarkerResult(biomarkerInfo, index) {
     
     // Get additional biomarker details from biomarkerUrlMap
     const biomarkerKey = biomarkerInfo.biomarkerName.trim().toLowerCase();
-    const additionalInfo = biomarkerUrlMap.get(biomarkerKey);
+    let additionalInfo = biomarkerUrlMap.get(biomarkerKey);
+    
+    // Verify calculation assay type based on LOINC match
+    additionalInfo = verifyCalculationAssayType(additionalInfo, biomarkerInfo.loincCode);
     
     let biomarkerContent = `
         <div class="search-result-header biomarker-header">
@@ -1675,7 +1836,30 @@ function createBiomarkerResult(biomarkerInfo, index) {
             `;
         }
         
-        if (additionalInfo.assayType) {
+        // Add associated biomarkers if this is a calculation (without showing Assay Type)
+        if (additionalInfo && additionalInfo.assayType === 'Calculation' && additionalInfo.associatedBiomarkers && additionalInfo.associatedBiomarkers.length > 0) {
+            const associatedCount = additionalInfo.associatedBiomarkers.length;
+            biomarkerContent += `
+                <div class="detail-item-inline">
+                    <span class="detail-label">Associated Biomarkers (${associatedCount}):</span>
+                    <div class="detail-value">
+                        <ul class="associated-biomarkers-list" style="margin: 5px 0; font-size: 14px;">`;
+            
+            additionalInfo.associatedBiomarkers.forEach(associated => {
+                biomarkerContent += `
+                            <li>
+                                <span class="associated-biomarker-name">${associated.name}</span> 
+                                <span class="associated-biomarker-loinc">(LOINC: ${associated.loinc})</span>
+                            </li>`;
+            });
+            
+            biomarkerContent += `
+                        </ul>
+                    </div>
+                </div>
+            `;
+        } else if (additionalInfo && additionalInfo.assayType) {
+            // Show regular assay type for non-calculation biomarkers
             biomarkerContent += `
                 <div class="detail-item-inline">
                     <span class="detail-label">Assay Type:</span>
@@ -1727,7 +1911,30 @@ function createBiomarkerResult(biomarkerInfo, index) {
             `;
         }
         
-        if (additionalInfo.assayType) {
+        // Add associated biomarkers if this is a calculation (without showing Assay Type)
+        if (additionalInfo && additionalInfo.assayType === 'Calculation' && additionalInfo.associatedBiomarkers && additionalInfo.associatedBiomarkers.length > 0) {
+            const associatedCount = additionalInfo.associatedBiomarkers.length;
+            biomarkerContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Associated Biomarkers (${associatedCount}):</span>
+                    <div class="detail-value">
+                        <ul class="associated-biomarkers-list">`;
+            
+            additionalInfo.associatedBiomarkers.forEach(associated => {
+                biomarkerContent += `
+                            <li>
+                                <span class="associated-biomarker-name">${associated.name}</span> 
+                                <span class="associated-biomarker-loinc">(LOINC: ${associated.loinc})</span>
+                            </li>`;
+            });
+            
+            biomarkerContent += `
+                        </ul>
+                    </div>
+                </div>
+            `;
+        } else if (additionalInfo && additionalInfo.assayType) {
+            // Show regular assay type for non-calculation biomarkers
             biomarkerContent += `
                 <div class="detail-item">
                     <span class="detail-label">Assay Type:</span>
@@ -2329,13 +2536,21 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
     const strictPanelResults = searchFusePanels.search(lowerQuery);
 
     // Search biomarkers and find panels that contain matching biomarkers
-    const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => ({
-        biomarkerName: b.biomarkerName,
-        originalKey: b.biomarkerName.toLowerCase(),
-        loincCode: b.loincCode, // Include loincCode in searchable keys for biomarkers
-        description: biomarkerUrlMap.get(b.biomarkerName.toLowerCase())?.description || '',
-        assayType: biomarkerUrlMap.get(b.biomarkerName.toLowerCase())?.assayType || ''
-    }));
+    const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => {
+        const biomarkerKey = b.biomarkerName.toLowerCase();
+        let biomarkerInfo = biomarkerUrlMap.get(biomarkerKey);
+        
+        // Verify calculation assay type based on LOINC match
+        biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, b.loincCode);
+        
+        return {
+            biomarkerName: b.biomarkerName,
+            originalKey: biomarkerKey,
+            loincCode: b.loincCode, // Include loincCode in searchable keys for biomarkers
+            description: biomarkerInfo?.description || '',
+            assayType: biomarkerInfo?.assayType || ''
+        };
+    });
     const searchFuseBiomarkers = new Fuse(biomarkerNamesArrayForSearch, currentBiomarkerOptions);
     const strictBiomarkerResults = searchFuseBiomarkers.search(lowerQuery);
 
