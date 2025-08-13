@@ -1,6 +1,6 @@
 window.openPanelInNewTab = function(panelKeyword) {
     const baseUrl = window.location.origin + window.location.pathname;
-    const newUrl = `${baseUrl}?search=${panelKeyword}`;
+    const newUrl = `${baseUrl}?search=${panelKeyword}&exact=true`;
     window.open(newUrl, '_blank');
 };
 
@@ -2562,7 +2562,7 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
         
     let foundDirectMatches = []; 
 
-    const exactPanelMatch = allContentData.find(panel => panel.keyword.toLowerCase() === lowerQuery);
+    /*const exactPanelMatch = allContentData.find(panel => panel.keyword.toLowerCase() === lowerQuery);
     if (exactPanelMatch) {
         const panelElement = document.querySelector(`[data-keyword="${exactPanelMatch.keyword}"]`);
         if (panelElement) {
@@ -2582,7 +2582,7 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
             }
         });
         return; // Stop execution here, we found a perfect match.
-    }
+    }*/
 
     const searchThreshold = searchTriggeredFromDropdown ? 0.2 : 0.1;
     
@@ -2863,9 +2863,27 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
         // Handle initial URL search parameter
         const params = new URLSearchParams(window.location.search);
         const searchValue = params.get('search');
+        const isExactSearch = params.get('exact') === 'true'; // Check for our new parameter
+
         if (searchValue) {
-            searchInput.value = decodeURIComponent(searchValue); // Decode the URL component
-            filterContent();
+            searchInput.value = decodeURIComponent(searchValue);
+
+            if (isExactSearch) {
+                // This is an exact search from the "new tab" feature.
+                console.log("Performing exact search for:", searchValue);
+                
+                // Hide all panels
+                paragraphContainer.querySelectorAll('.content-paragraph').forEach(p => p.classList.add('hide'));
+                
+                // Find and show only the one specific panel using its data-keyword attribute
+                const panelElement = document.querySelector(`[data-keyword="${searchValue}"]`);
+                if (panelElement) {
+                    panelElement.classList.remove('hide');
+                }
+            } else {
+                // This is a regular search, so use the normal fuzzy logic
+                filterContent();
+            }
         }
 
     }); // End of loadContent().then() block
