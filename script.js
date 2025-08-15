@@ -686,6 +686,8 @@ document.addEventListener('DOMContentLoaded', function() {
             detailsDiv.classList.add('gray-biomarker');
         }
 
+        
+
         let detailsContent = `<h4>${biomarkerName}</h4>`;
 
         detailsContent += `
@@ -693,6 +695,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 <span class="detail-label">Biomarker Name:</span>
                 <span class="detail-value">${biomarkerName}</span>
             </div>`;
+
+        if (biomarkerInfo && biomarkerInfo.biomarkerType) {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Biomarker Type:</span>
+                    <span class="detail-value">${biomarkerInfo.biomarkerType}</span>
+                </div>`;
+        }else if (!isValid) {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Biomarker Type:</span>
+                    <span class="detail-value" style="color: #000000;">
+                        ${biomarkerInfo && biomarkerInfo.biomarkerType ? biomarkerInfo.biomarkerType : 'Unknown'}
+                    </span>
+                </div>`;
+        } 
 
         if (biomarkerData && biomarkerData.loinc) {
             detailsContent += `
@@ -746,8 +764,40 @@ document.addEventListener('DOMContentLoaded', function() {
             detailsContent += `
                 <div class="detail-item">
                     <span class="detail-label">Assay Type:</span>
-                    <span class="detail-value" style="color: #000000; font-weight: bold;">
+                    <span class="detail-value" style="color: #000000;">
                         ${biomarkerInfo && biomarkerInfo.assayType ? biomarkerInfo.assayType : 'Unknown'}
+                    </span>
+                </div>`;
+        } 
+
+        if (biomarkerInfo && biomarkerInfo.vendor) {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Assay Vendor:</span>
+                    <span class="detail-value">${biomarkerInfo.vendor}</span>
+                </div>`;
+        }else if (!isValid) {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Assay Vendor:</span>
+                    <span class="detail-value" style="color: #000000;">
+                        ${biomarkerInfo && biomarkerInfo.vendor ? biomarkerInfo.vendor : 'Unknown'}
+                    </span>
+                </div>`;
+        } 
+
+        if (biomarkerInfo && biomarkerInfo.catalog) {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Catalog Number:</span>
+                    <span class="detail-value">${biomarkerInfo.catalog}</span>
+                </div>`;
+        }else if (!isValid) {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Catalog Number:</span>
+                    <span class="detail-value" style="color: #000000;">
+                        ${biomarkerInfo && biomarkerInfo.catalog ? biomarkerInfo.catalog : 'Unknown'}
                     </span>
                 </div>`;
         } 
@@ -1331,10 +1381,13 @@ document.addEventListener('DOMContentLoaded', function() {
        
        // Find relevant columns
        const nameColumn = findColumnIndex(headers, ['Biomarker']);
+       const biomarkerTypeColumn = findColumnIndex(headers, ['Biomarker Type']);
        const urlColumn = findColumnIndex(headers, ['LOINC url']);
        const descriptionColumn = findColumnIndex(headers, ['LOINC name']);
        const assayTypeColumn = findColumnIndex(headers, ['Assay type', 'Assay Type']);
        const kitUrlColumn = findColumnIndex(headers, ['Kit url', 'Kit URL']);
+       const vendorColumn = findColumnIndex(headers, ['Vendor', 'Vendor']);
+       const catalogColumn = findColumnIndex(headers, ['Catalog Number', 'Catalog Number']);
        
        console.log(`Found columns - Name: ${nameColumn}, URL: ${urlColumn}, Description: ${descriptionColumn}, Assay Type: ${assayTypeColumn}, Kit URL: ${kitUrlColumn}`);
        
@@ -1345,17 +1398,23 @@ document.addEventListener('DOMContentLoaded', function() {
            if (row.length === 0) continue;
            
            const name = nameColumn >= 0 && row[nameColumn] ? row[nameColumn].toString().trim() : '';
+           const biomarkerType = biomarkerTypeColumn >= 0 && row[biomarkerTypeColumn] ? row[biomarkerTypeColumn].toString().trim() : '';
            const url = urlColumn >= 0 && row[urlColumn] ? row[urlColumn].toString().trim() : '';
            const description = descriptionColumn >= 0 && row[descriptionColumn] ? row[descriptionColumn].toString().trim() : '';
            const assayType = assayTypeColumn >= 0 && row[assayTypeColumn] ? row[assayTypeColumn].toString().trim() : '';
            const kitUrl = kitUrlColumn >= 0 && row[kitUrlColumn] ? row[kitUrlColumn].toString().trim() : '';
-           
+           const vendor = vendorColumn >= 0 && row[vendorColumn] ? row[vendorColumn].toString().trim() : '';
+           const catalog = catalogColumn >= 0 && row[catalogColumn] ? row[catalogColumn].toString().trim() : '';
+
            if (name) {
                urlMap.set(name.trim().toLowerCase(), {
+                   biomarkerType : biomarkerType || '',
                    url: url || '#',
                    description: description || '',
                    assayType: assayType || '',
-                   kitUrl: kitUrl || ''
+                   kitUrl: kitUrl || '',
+                   vendor : vendor || '',
+                   catalog : catalog || ''
                });
            }
        }
