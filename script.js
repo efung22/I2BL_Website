@@ -725,7 +725,9 @@ document.addEventListener('DOMContentLoaded', function() {
             detailsContent += `
                 <div class="detail-item">
                     <span class="detail-label">LOINC Code:</span>
-                    <span class="detail-value">${biomarkerData.loinc}</span>
+                    <span class="detail-value">
+                        <a href="https://loinc.org/${biomarkerData.loinc}" target="_blank">${biomarkerData.loinc}</a>
+                    </span>
                 </div>`;
         }
 
@@ -737,13 +739,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>`;
         }
 
-        if (biomarkerInfo && biomarkerInfo.url && biomarkerInfo.url !== '#') {
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">LOINC URL:</span>
-                    <span class="detail-value"><a href="${biomarkerInfo.url}" target="_blank" class="detail-link">View LOINC Details</a></span>
-                </div>`;
-        }
+        
 
         // Add associated biomarkers if this is a calculation (without showing Assay Type)
         if (biomarkerInfo && biomarkerInfo.assayType === 'Calculation' && biomarkerInfo.associatedBiomarkers && biomarkerInfo.associatedBiomarkers.length > 0) {
@@ -2000,15 +1996,6 @@ function createBiomarkerResult(biomarkerInfo, index) {
                 <div class="detail-item">
                     <span class="detail-label">Biomarker Type:</span>
                     <span class="detail-value">${additionalInfo.assayType}</span>
-                </div>
-            `;
-        }
-        
-        if (additionalInfo.url && additionalInfo.url !== '#') {
-            biomarkerContent += `
-                <div class="detail-item">
-                    <span class="detail-label">LOINC URL:</span>
-                    <span class="detail-value"><a href="${additionalInfo.url}" target="_blank" class="detail-link">View LOINC Details</a></span>
                 </div>
             `;
         }
