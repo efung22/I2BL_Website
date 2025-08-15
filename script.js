@@ -688,33 +688,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         let detailsContent = `<h4>${biomarkerName}</h4>`;
 
-        if (!isValid) {
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">Biomarker Type:</span>
-                    <span class="detail-value" style="color: #000000; font-weight: bold;">
-                        ${biomarkerInfo && biomarkerInfo.assayType ? biomarkerInfo.assayType : 'Unknown'}
-                    </span>
-                </div>`;
-        } else if (isGrayBiomarker) {
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">Biomarker Type:</span>
-                    <span class="detail-value" style="color: #999999; font-weight: bold;">
-                        Description
-                    </span>
-                </div>`;
-        } else {
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">Biomarker Type:</span>
-                    <span class="detail-value" style="color: #28a745; font-weight: bold;">
-                        ${biomarkerInfo && biomarkerInfo.assayType ? biomarkerInfo.assayType : 'Unknown'}
-                    </span>
-                </div>`;
-        }
-
-
         detailsContent += `
             <div class="detail-item">
                 <span class="detail-label">Biomarker Name:</span>
@@ -762,21 +735,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         </ul>
                     </div>
                 </div>`;
-        // } else if (isGrayBiomarker) {
-        //     // Show "Description" for gray biomarkers
-        //     detailsContent += `
-        //         <div class="detail-item">
-        //             <span class="detail-label">Biomarker Type:</span>
-        //             <span class="detail-value">Description</span>
-        //         </div>`;
         } else if (biomarkerInfo && biomarkerInfo.assayType) {
             // Show regular assay type for non-calculation biomarkers
             detailsContent += `
                 <div class="detail-item">
-                    <span class="detail-label">Biomarker Type:</span>
+                    <span class="detail-label">Assay Type:</span>
                     <span class="detail-value">${biomarkerInfo.assayType}</span>
                 </div>`;
-        }
+        } else if (!isValid) {
+            detailsContent += `
+                <div class="detail-item">
+                    <span class="detail-label">Assay Type:</span>
+                    <span class="detail-value" style="color: #000000; font-weight: bold;">
+                        ${biomarkerInfo && biomarkerInfo.assayType ? biomarkerInfo.assayType : 'Unknown'}
+                    </span>
+                </div>`;
+        } 
 
         if (biomarkerInfo && biomarkerInfo.kitUrl) {
             detailsContent += `
@@ -1359,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', function() {
        const nameColumn = findColumnIndex(headers, ['Biomarker']);
        const urlColumn = findColumnIndex(headers, ['LOINC url']);
        const descriptionColumn = findColumnIndex(headers, ['LOINC name']);
-       const assayTypeColumn = findColumnIndex(headers, ['Biomarker type', 'Biomarker Type']);
+       const assayTypeColumn = findColumnIndex(headers, ['Assay type', 'Assay Type']);
        const kitUrlColumn = findColumnIndex(headers, ['Kit url', 'Kit URL']);
        
        console.log(`Found columns - Name: ${nameColumn}, URL: ${urlColumn}, Description: ${descriptionColumn}, Assay Type: ${assayTypeColumn}, Kit URL: ${kitUrlColumn}`);
@@ -1919,7 +1893,7 @@ function createBiomarkerResult(biomarkerInfo, index) {
             // Show regular assay type for non-calculation biomarkers
             biomarkerContent += `
                 <div class="detail-item-inline">
-                    <span class="detail-label">Biomarker Type:</span>
+                    <span class="detail-label">Assay Type:</span>
                     <span class="detail-value">${additionalInfo.assayType}</span>
                 </div>
             `;
@@ -1994,7 +1968,7 @@ function createBiomarkerResult(biomarkerInfo, index) {
             // Show regular assay type for non-calculation biomarkers
             biomarkerContent += `
                 <div class="detail-item">
-                    <span class="detail-label">Biomarker Type:</span>
+                    <span class="detail-label">Assay Type:</span>
                     <span class="detail-value">${additionalInfo.assayType}</span>
                 </div>
             `;
