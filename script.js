@@ -709,6 +709,11 @@ document.addEventListener('DOMContentLoaded', function() {
             biomarkerType = getBiomarkerTypeFromPureData(biomarkerName, biomarkerData.loinc);
         }
         
+        // Override biomarker type to "Description" if biomarker is gray
+        if (isGrayBiomarker) {
+            biomarkerType = 'Description';
+        }
+        
         detailsContent += `
             <div class="detail-item">
                 <span class="detail-label">Biomarker Type:</span>
@@ -2092,8 +2097,23 @@ function createBiomarkerResult(biomarkerInfo, index) {
             `;
         }
         
-        // Check if this is a calculation based on biomarker type from pureBiomarkerData
-        const biomarkerType = getBiomarkerTypeFromPureData(biomarkerName, loincCode);
+        // Check if biomarker is gray and get biomarker type
+        const biomarkerName = biomarkerInfo.biomarkerName;
+        const loincCode = biomarkerInfo.loincCode;
+        
+        // Check if biomarker is gray (#d9d9d9)
+        const rowColors = biomarkerColorMap.get(biomarkerInfo.rowIndex?.toString());
+        const biomarkerColor = rowColors ? rowColors[biomarkerInfo.biomarkerColumnIndex?.toString()] : null;
+        const isGrayBiomarker = biomarkerColor && biomarkerColor.toLowerCase() === '#d9d9d9';
+        
+        // Get biomarker type from pureBiomarkerData
+        let biomarkerType = getBiomarkerTypeFromPureData(biomarkerName, loincCode);
+        
+        // Override biomarker type to "Description" if biomarker is gray
+        if (isGrayBiomarker) {
+            biomarkerType = 'Description';
+        }
+        
         if (biomarkerType === 'Calculation') {
             // Use existing associated biomarkers if available, otherwise get from calculationData
             let associatedBiomarkers = [];
@@ -2178,8 +2198,14 @@ function createBiomarkerResult(biomarkerInfo, index) {
             `;
         }
         
-        // Check if this is a calculation based on biomarker type from pureBiomarkerData
-        const biomarkerType = getBiomarkerTypeFromPureData(biomarkerName, loincCode);
+        // Get biomarker type from pureBiomarkerData (biomarkerName and loincCode already defined above)
+        let biomarkerType = getBiomarkerTypeFromPureData(biomarkerName, loincCode);
+        
+        // Override biomarker type to "Description" if biomarker is gray
+        if (isGrayBiomarker) {
+            biomarkerType = 'Description';
+        }
+        
         if (biomarkerType === 'Calculation') {
             // Use existing associated biomarkers if available, otherwise get from calculationData
             let associatedBiomarkers = [];
