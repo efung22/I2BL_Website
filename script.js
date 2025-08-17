@@ -555,6 +555,172 @@ document.addEventListener('DOMContentLoaded', function() {
                     opacity: 1;
                 }
 
+                /* Homepage styles */
+                .homepage-container {
+                    display: none;
+                    text-align: center;
+                    padding: 10px 20px;
+                    max-width: 1000px;
+                    margin: 0 auto;
+                }
+
+                .homepage-title {
+                    font-size: 24px; /* Smaller than main title */
+                    font-weight: bold;
+                    color: #000000;
+                    margin-bottom: 15px;
+                    margin-top: -10px; /* Move closer to search bar */
+                    text-shadow: none;
+                    font-family: "Times New Roman", Times, serif;
+                }
+
+                .homepage-images-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 30px;
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+
+                .homepage-image-container {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 20px;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                    transition: transform 0.3s ease, box-shadow 0.3s ease;
+                    border: 2px solid #000000;
+                }
+
+                .homepage-image-container:hover {
+                    transform: translateY(-5px);
+                    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+                    border-color: #000000;
+                }
+
+                .homepage-image {
+                    width: 100%;
+                    height: auto;
+                    max-width: 350px;
+                    border-radius: 8px;
+                    transition: opacity 0.3s ease;
+                }
+
+                .homepage-image:hover {
+                    opacity: 0.9;
+                }
+
+                /* Homepage button styles */
+                .homepage-button {
+                    position: fixed;
+                    left: 20px;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    width: 60px;
+                    height: 60px;
+                    background: white;
+                    border: 2px solid #000000;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+
+                .homepage-button:hover {
+                    transform: translateY(-50%) scale(1.1);
+                    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+                }
+
+                .homepage-button img {
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                }
+
+                @media (max-width: 768px) {
+                    .homepage-images-grid {
+                        grid-template-columns: 1fr;
+                        gap: 20px;
+                    }
+                    
+                    .homepage-title {
+                        font-size: 20px; /* Smaller than main title on mobile */
+                        margin-bottom: 12px;
+                        margin-top: -10px; /* Move closer to search bar on mobile */
+                    }
+                    
+                    .homepage-container {
+                        padding: 10px 15px;
+                    }
+
+                    .homepage-button {
+                        width: 50px;
+                        height: 50px;
+                        left: 15px;
+                    }
+
+                    .homepage-button img {
+                        width: 42px;
+                        height: 42px;
+                    }
+                }
+
+                /* Fixed BMP/CMP shortcut buttons */
+                .fixed-shortcut-buttons {
+                    position: fixed;
+                    left: 20px; /* Same left position as homepage button */
+                    top: calc(50% + 50px); /* Position below homepage button */
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    z-index: 999;
+                    align-items: center; /* Center buttons within container */
+                }
+
+                .fixed-shortcut-button {
+                    background: #28a745;
+                    color: white;
+                    border: 2px solid #000000;
+                    border-radius: 6px;
+                    padding: 8px 0; /* Remove horizontal padding, use width instead */
+                    font-size: 12px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-decoration: none;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    width: 60px; /* Slightly wider for better proportion */
+                    height: 32px; /* Fixed height for consistency */
+                    text-align: center;
+                }
+
+                .fixed-shortcut-button:hover {
+                    background: #218838;
+                    transform: scale(1.05);
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+                }
+
+                @media (max-width: 768px) {
+                    .fixed-shortcut-buttons {
+                        left: 15px; /* Same left position as homepage button on mobile */
+                        top: calc(50% + 45px);
+                        gap: 8px;
+                    }
+
+                    .fixed-shortcut-button {
+                        padding: 6px 0;
+                        font-size: 11px;
+                        width: 55px;
+                        height: 28px;
+                    }
+                }
+
             </style>
         `;
         
@@ -588,6 +754,89 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log(`Invalid biomarker: ${biomarkerName} (color: ${color})`);
         return false;
+    }
+
+    // Create and show homepage
+    function createHomepage() {
+        // Check if homepage already exists
+        let homepageContainer = document.getElementById('homepage-container');
+        if (!homepageContainer) {
+            homepageContainer = document.createElement('div');
+            homepageContainer.id = 'homepage-container';
+            homepageContainer.className = 'homepage-container';
+            
+            homepageContainer.innerHTML = `
+                <h1 class="homepage-title">Home Summary</h1>
+                <div class="homepage-images-grid">
+                    <div class="homepage-image-container">
+                        <img src="BiomarkerTypes.png" alt="Biomarker Types" class="homepage-image">
+                    </div>
+                    <div class="homepage-image-container">
+                        <img src="BiochemicalBiomarkersAssays.png" alt="Biochemical Biomarkers Assays" class="homepage-image">
+                    </div>
+                    <div class="homepage-image-container">
+                        <img src="CalculationBiomarkers.png" alt="Calculation Biomarkers" class="homepage-image">
+                    </div>
+                    <div class="homepage-image-container">
+                        <img src="PanelCompatability.png" alt="Panel Compatibility" class="homepage-image">
+                    </div>
+                </div>
+
+            `;
+            
+            paragraphContainer.appendChild(homepageContainer);
+        }
+        
+        return homepageContainer;
+    }
+
+    // Show homepage
+    function showHomepage() {
+        const homepageContainer = createHomepage();
+        homepageContainer.style.display = 'block';
+    }
+
+    // Hide homepage
+    function hideHomepage() {
+        const homepageContainer = document.getElementById('homepage-container');
+        if (homepageContainer) {
+            homepageContainer.style.display = 'none';
+        }
+    }
+
+    // Create homepage button
+    function createHomepageButton() {
+        // Check if homepage button already exists
+        let homepageButton = document.getElementById('homepage-button');
+        if (!homepageButton) {
+            homepageButton = document.createElement('div');
+            homepageButton.id = 'homepage-button';
+            homepageButton.className = 'homepage-button';
+            homepageButton.title = 'Go to Homepage';
+            
+            homepageButton.innerHTML = `
+                <img src="Homepage.png" alt="Homepage">
+            `;
+            
+            // Add click event listener
+            homepageButton.addEventListener('click', function() {
+                // Clear search input
+                searchInput.value = '';
+                // Hide suggestions
+                hideSuggestions();
+                // Show homepage
+                showHomepage();
+                // Hide all content paragraphs
+                paragraphContainer.querySelectorAll('.content-paragraph').forEach(p => p.classList.add('hide'));
+                // Clear any search results or messages
+                document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
+                    .forEach(el => el.remove());
+            });
+            
+            document.body.appendChild(homepageButton);
+        }
+        
+        return homepageButton;
     }
 
 
@@ -1435,12 +1684,15 @@ document.addEventListener('DOMContentLoaded', function() {
        }
        
        const headers = calculationData[0];
-       const nameColumn = findColumnIndex(headers, ['Biomarker', 'Biomarker Name', 'Calculation Name']);
-       const loincColumn = findColumnIndex(headers, ['LOINC', 'LOINC Code', 'Calculation LOINC']);
+       const nameColumn = findColumnIndex(headers, ['Calculations', 'Biomarker', 'Biomarker Name', 'Calculation Name']);
+       const loincColumn = findColumnIndex(headers, ['Calculation LOINC', 'LOINC', 'LOINC Code']);
        
        if (nameColumn === -1 || loincColumn === -1) {
+           console.log(`Could not find required columns. Name column: ${nameColumn}, LOINC column: ${loincColumn}`);
            return [];
        }
+       
+       console.log(`Searching for calculation: ${biomarkerName} with LOINC: ${loincCode}`);
        
        // Search for matching calculation
        for (let i = 1; i < calculationData.length; i++) {
@@ -1450,50 +1702,36 @@ document.addEventListener('DOMContentLoaded', function() {
            const rowName = row[nameColumn] ? row[nameColumn].toString().trim() : '';
            const rowLoinc = row[loincColumn] ? row[loincColumn].toString().trim() : '';
            
-           // Match both biomarker name and LOINC code
+           // Match both biomarker name and LOINC code (or just name if LOINC doesn't match)
            if (rowName.toLowerCase() === biomarkerName.toLowerCase() && 
-               rowLoinc === loincCode) {
+               (rowLoinc === loincCode || !loincCode || !rowLoinc)) {
                
-               // Extract associated biomarkers from this row
+               console.log(`Found matching calculation row for ${biomarkerName}`);
+               
+               // Extract associated biomarkers using the same logic as parseBiomarkerAssayData
                const associatedBiomarkers = [];
                
-               // Look through all columns for associated biomarker data
-               for (let j = 0; j < row.length; j++) {
-                   const cellValue = row[j] ? row[j].toString().trim() : '';
-                   const headerName = headers[j] ? headers[j].toString().toLowerCase() : '';
+               // Look for biomarkers in columns C, E, G... (indices 2, 4, 6...)
+               // and their LOINCs in columns D, F, H... (indices 3, 5, 7...)
+               for (let colIndex = 2; colIndex < row.length; colIndex += 2) {
+                   const biomarkerName = row[colIndex] ? row[colIndex].toString().trim() : '';
+                   const biomarkerLoinc = row[colIndex + 1] ? row[colIndex + 1].toString().trim() : '';
                    
-                   // Skip the main biomarker name and LOINC columns
-                   if (j === nameColumn || j === loincColumn || !cellValue) continue;
-                   
-                   // If this looks like a biomarker name or LOINC, add it
-                   if (headerName.includes('biomarker') || headerName.includes('associated') || 
-                       cellValue.match(/^\d{4,5}-\d$/)) { // LOINC pattern
-                       
-                       // Try to parse as biomarker name or LOINC
-                       if (cellValue.match(/^\d{4,5}-\d$/)) {
-                           // This is a LOINC code, try to find the biomarker name
-                           const biomarkerName = findBiomarkerNameByLoinc(cellValue);
-                           if (biomarkerName) {
-                               associatedBiomarkers.push({
-                                   name: biomarkerName,
-                                   loinc: cellValue
-                               });
-                           }
-                       } else {
-                           // This might be a biomarker name, try to find its LOINC
-                           const loincCode = findLoincByBiomarkerName(cellValue);
-                           associatedBiomarkers.push({
-                               name: cellValue,
-                               loinc: loincCode || 'Unknown'
-                           });
-                       }
+                   if (biomarkerName && biomarkerLoinc) {
+                       associatedBiomarkers.push({
+                           name: biomarkerName,
+                           loinc: biomarkerLoinc
+                       });
+                       console.log(`  - Found associated biomarker: ${biomarkerName} (LOINC: ${biomarkerLoinc})`);
                    }
                }
                
+               console.log(`Extracted ${associatedBiomarkers.length} associated biomarkers for ${rowName}`);
                return associatedBiomarkers;
            }
        }
        
+       console.log(`No matching calculation found for ${biomarkerName}`);
        return [];
    }
 
@@ -2645,9 +2883,30 @@ function filterPanelsOnly() {
     // Remove biomarker results and search summaries
     document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
         .forEach(el => el.remove());
+    hideHomepage(); // Hide homepage when performing search
 
     if (lowerQuery === '') {
         allParagraphs.forEach(p => p.classList.add('hide'));
+        showHomepage();
+        return;
+    }
+
+    // Special cases for BMP and CMP
+    if (lowerQuery === 'bmp') {
+        allParagraphs.forEach(p => p.classList.add('hide'));
+        const bmpPanel = document.querySelector('[data-keyword="Metabolic Panel (8), Basic"]');
+        if (bmpPanel) {
+            bmpPanel.classList.remove('hide');
+        }
+        return;
+    }
+
+    if (lowerQuery === 'cmp') {
+        allParagraphs.forEach(p => p.classList.add('hide'));
+        const cmpPanel = document.querySelector('[data-keyword="Metabolic Panel (14), Comprehensive"]');
+        if (cmpPanel) {
+            cmpPanel.classList.remove('hide');
+        }
         return;
     }
 
@@ -2759,9 +3018,11 @@ function initializeBiomarkerSearch() {
         document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
         .forEach(el => el.remove());
         hideSuggestions(); // Hide suggestions when a full search is initiated
+        hideHomepage(); // Hide homepage when performing search
 
         if (lowerQuery === '') {
             paragraphContainer.querySelectorAll('.content-paragraph').forEach(p => p.classList.add('hide'));
+            showHomepage();
             return;
         }
 
@@ -2793,6 +3054,28 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
     // Remove any existing biomarker results and search summaries
     document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
         .forEach(el => el.remove());
+    hideHomepage(); // Hide homepage when performing search
+
+    // Special cases for BMP and CMP
+    if (lowerQuery === 'bmp') {
+        const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
+        allParagraphs.forEach(p => p.classList.add('hide'));
+        const bmpPanel = document.querySelector('[data-keyword="Metabolic Panel (8), Basic"]');
+        if (bmpPanel) {
+            bmpPanel.classList.remove('hide');
+        }
+        return;
+    }
+
+    if (lowerQuery === 'cmp') {
+        const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
+        allParagraphs.forEach(p => p.classList.add('hide'));
+        const cmpPanel = document.querySelector('[data-keyword="Metabolic Panel (14), Comprehensive"]');
+        if (cmpPanel) {
+            cmpPanel.classList.remove('hide');
+        }
+        return;
+    }
         
     let foundDirectMatches = []; 
 
@@ -3026,6 +3309,8 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
 
    // MODIFIED BLOCK START
    addExpandableStyles(); // Keep this as it is
+   createHomepageButton(); // Create the homepage button
+   createFixedShortcutButtons(); // Create the fixed BMP/CMP buttons
    
    // Show cache status immediately when page loads
    showCacheStatus();
@@ -3118,6 +3403,9 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
                 // This is a regular search, so use the normal fuzzy logic
                 filterContent();
             }
+        } else {
+            // No search parameter, show homepage
+            showHomepage();
         }
 
     }); // End of loadContent().then() block
@@ -3219,5 +3507,39 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
             }, 150); // Small delay to allow click event to register if applicable
         });
     });
+
+// Create fixed shortcut buttons for BMP and CMP
+function createFixedShortcutButtons() {
+    // Check if shortcut buttons already exist
+    let shortcutButtonsContainer = document.getElementById('fixed-shortcut-buttons');
+    if (!shortcutButtonsContainer) {
+        shortcutButtonsContainer = document.createElement('div');
+        shortcutButtonsContainer.id = 'fixed-shortcut-buttons';
+        shortcutButtonsContainer.className = 'fixed-shortcut-buttons';
+        
+        shortcutButtonsContainer.innerHTML = `
+            <button class="fixed-shortcut-button" id="fixed-bmp-shortcut" title="Search BMP">BMP</button>
+            <button class="fixed-shortcut-button" id="fixed-cmp-shortcut" title="Search CMP">CMP</button>
+        `;
+        
+        // Add event listeners for shortcut buttons
+        const bmpButton = shortcutButtonsContainer.querySelector('#fixed-bmp-shortcut');
+        const cmpButton = shortcutButtonsContainer.querySelector('#fixed-cmp-shortcut');
+        
+        bmpButton.addEventListener('click', function() {
+            searchInput.value = 'BMP';
+            filterContent();
+        });
+        
+        cmpButton.addEventListener('click', function() {
+            searchInput.value = 'CMP';
+            filterContent();
+        });
+        
+        document.body.appendChild(shortcutButtonsContainer);
+    }
+    
+    return shortcutButtonsContainer;
+}
 
 // MODIFIED BLOCK END
