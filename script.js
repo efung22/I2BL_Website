@@ -363,6 +363,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     color: #218838;
                 }
                 
+                .associated-biomarker-clickable {
+                    color: #007bff;
+                    cursor: pointer;
+                    text-decoration: underline;
+                    transition: color 0.2s;
+                }
+                
+                .associated-biomarker-clickable:hover {
+                    color: #0056b3;
+                }
+                
                 .biomarker-clickable.expanded {
                     color: #28a745;
                     font-weight: bold;
@@ -668,58 +679,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }
 
-                /* Fixed BMP/CMP shortcut buttons */
-                .fixed-shortcut-buttons {
-                    position: fixed;
-                    left: 20px; /* Same left position as homepage button */
-                    top: calc(50% + 50px); /* Position below homepage button */
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    z-index: 999;
-                    align-items: center; /* Center buttons within container */
-                }
 
-                .fixed-shortcut-button {
-                    background: #28a745;
-                    color: white;
-                    border: 2px solid #000000;
-                    border-radius: 6px;
-                    padding: 8px 0; /* Remove horizontal padding, use width instead */
-                    font-size: 12px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    text-decoration: none;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                    width: 60px; /* Slightly wider for better proportion */
-                    height: 32px; /* Fixed height for consistency */
-                    text-align: center;
-                }
-
-                .fixed-shortcut-button:hover {
-                    background: #218838;
-                    transform: scale(1.05);
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-                }
-
-                @media (max-width: 768px) {
-                    .fixed-shortcut-buttons {
-                        left: 15px; /* Same left position as homepage button on mobile */
-                        top: calc(50% + 45px);
-                        gap: 8px;
-                    }
-
-                    .fixed-shortcut-button {
-                        padding: 6px 0;
-                        font-size: 11px;
-                        width: 55px;
-                        height: 28px;
-                    }
-                }
 
             </style>
         `;
@@ -1011,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 associatedBiomarkers.forEach(associated => {
                     detailsContent += `
                                 <li>
-                                    <span class="associated-biomarker-name">${associated.name}</span> 
+                                    <span class="associated-biomarker-name associated-biomarker-clickable" onclick="window.openPanelInNewTab('${associated.name}')">${associated.name}</span> 
                                     <span class="associated-biomarker-loinc">(LOINC: ${associated.loinc})</span>
                                 </li>`;
                 });
@@ -2372,7 +2332,7 @@ function createBiomarkerResult(biomarkerInfo, index) {
                 associatedBiomarkers.forEach(associated => {
                     biomarkerContent += `
                                 <li>
-                                    <span class="associated-biomarker-name">${associated.name}</span> 
+                                    <span class="associated-biomarker-name associated-biomarker-clickable" onclick="window.openPanelInNewTab('${associated.name}')">${associated.name}</span> 
                                     <span class="associated-biomarker-loinc">(LOINC: ${associated.loinc})</span>
                                 </li>`;
                 });
@@ -2464,7 +2424,7 @@ function createBiomarkerResult(biomarkerInfo, index) {
                 associatedBiomarkers.forEach(associated => {
                     biomarkerContent += `
                                 <li>
-                                    <span class="associated-biomarker-name">${associated.name}</span> 
+                                    <span class="associated-biomarker-name associated-biomarker-clickable" onclick="window.openPanelInNewTab('${associated.name}')">${associated.name}</span> 
                                     <span class="associated-biomarker-loinc">(LOINC: ${associated.loinc})</span>
                                 </li>`;
                 });
@@ -3310,7 +3270,6 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
    // MODIFIED BLOCK START
    addExpandableStyles(); // Keep this as it is
    createHomepageButton(); // Create the homepage button
-   createFixedShortcutButtons(); // Create the fixed BMP/CMP buttons
    
    // Show cache status immediately when page loads
    showCacheStatus();
@@ -3508,38 +3467,6 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
         });
     });
 
-// Create fixed shortcut buttons for BMP and CMP
-function createFixedShortcutButtons() {
-    // Check if shortcut buttons already exist
-    let shortcutButtonsContainer = document.getElementById('fixed-shortcut-buttons');
-    if (!shortcutButtonsContainer) {
-        shortcutButtonsContainer = document.createElement('div');
-        shortcutButtonsContainer.id = 'fixed-shortcut-buttons';
-        shortcutButtonsContainer.className = 'fixed-shortcut-buttons';
-        
-        shortcutButtonsContainer.innerHTML = `
-            <button class="fixed-shortcut-button" id="fixed-bmp-shortcut" title="Search BMP">BMP</button>
-            <button class="fixed-shortcut-button" id="fixed-cmp-shortcut" title="Search CMP">CMP</button>
-        `;
-        
-        // Add event listeners for shortcut buttons
-        const bmpButton = shortcutButtonsContainer.querySelector('#fixed-bmp-shortcut');
-        const cmpButton = shortcutButtonsContainer.querySelector('#fixed-cmp-shortcut');
-        
-        bmpButton.addEventListener('click', function() {
-            searchInput.value = 'BMP';
-            filterContent();
-        });
-        
-        cmpButton.addEventListener('click', function() {
-            searchInput.value = 'CMP';
-            filterContent();
-        });
-        
-        document.body.appendChild(shortcutButtonsContainer);
-    }
-    
-    return shortcutButtonsContainer;
-}
+
 
 // MODIFIED BLOCK END
