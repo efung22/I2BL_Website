@@ -417,6 +417,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     font-weight: bold;
                 }
 
+                /* Eye icon shown when a biomarker is expanded */
+                .biomarker-eye {
+                    width: 20px;
+                    height: 20px;
+                    vertical-align: text-bottom;
+                    margin-left: 6px;
+                    pointer-events: none; /* clicks pass through */
+                }
 
                 .panel-toggle-header {
                     cursor: pointer;
@@ -496,6 +504,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     font-size: 12px;
                     font-weight: bold;
                 }
+                /* Make the BIOMARKER pill blue in biomarker containers */
+                .panel-label.biomarker-label-panel {
+                    background-color: #1877f2;   /* blue */
+                }
+
 
                 .associated-panel-title {
                     font-weight: bold;
@@ -515,8 +528,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     font-size: 20px;
                     font-weight: bold;
                     color: #000;
-                    display: flex;
-                    align-items: center;
+                    display: block; 
                 }
 
                 .open-new-tab-icon {
@@ -661,6 +673,15 @@ document.addEventListener('DOMContentLoaded', function() {
                     border-radius: 50%;
                 }
 
+                /* Highlight for matched search text */
+                mark.search-highlight {
+                    background: #ffec86;       /* soft yellow */
+                    border-radius: 3px;
+                    color: inherit;  
+                    font-weight: inherit; 
+                    pointer-events: none;
+                }
+
                 @media (max-width: 768px) {
                     .homepage-images-grid {
                         grid-template-columns: 1fr;
@@ -687,14 +708,77 @@ document.addEventListener('DOMContentLoaded', function() {
                         width: 42px;
                         height: 42px;
                     }
+
                 }
-
-
 
             </style>
         `;
         
         document.head.insertAdjacentHTML('beforeend', expandableStyles);
+    }
+
+        // Helper functions for keys
+    function makeBiomarkerKey(name, loinc) {
+        return `${(name||'').trim().toLowerCase()}|${(loinc||'').trim().toLowerCase()}`;
+    }
+
+    function extractLoincFromUrl(url) {
+        if (!url) return '';
+        const m = url.trim().match(/loinc\.org\/([0-9\-]+)/i);
+        return m ? m[1] : '';
+    }
+
+    function clearSearchHighlights(root = paragraphContainer) {
+        root.querySelectorAll('mark.search-highlight').forEach(m => {
+            const parent = m.parentNode;
+            parent.replaceChild(document.createTextNode(m.textContent), m);
+            parent.normalize(); // merge adjacent text nodes
+        });
+        }
+
+        // Safely highlight text in element's text nodes only (doesn't touch tags)
+        function highlightMatchesInElement(el, query) {
+        if (!query) return;
+
+        const walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+        const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+        const textNodes = [];
+        while (walk.nextNode()) textNodes.push(walk.currentNode);
+
+        textNodes.forEach(node => {
+            const { textContent } = node;
+            if (!textContent) return;
+            const frag = document.createDocumentFragment();
+            let lastIdx = 0;
+            textContent.replace(regex, (match, idx) => {
+            if (idx > lastIdx) frag.appendChild(document.createTextNode(textContent.slice(lastIdx, idx)));
+            const mark = document.createElement('mark');
+            mark.className = 'search-highlight';
+            mark.textContent = match;
+            frag.appendChild(mark);
+            lastIdx = idx + match.length;
+            return match;
+            });
+            if (lastIdx === 0) return; // no match in this node
+            if (lastIdx < textContent.length) {
+            frag.appendChild(document.createTextNode(textContent.slice(lastIdx)));
+            }
+            node.parentNode.replaceChild(frag, node);
+        });
+        }
+
+        // Apply to current UI
+        function applySearchHighlights(query) {
+        if (!query) return;
+
+        // panel titles (e.g., "PANEL  Metabolic Panel…")
+        paragraphContainer.querySelectorAll('.panel-container .panel-content h3')
+            .forEach(h3 => highlightMatchesInElement(h3, query));
+
+        // biomarker chips/names that are rendered
+        paragraphContainer.querySelectorAll(
+            '.biomarker-clickable, .biomarker-item-in-panel, .associated-biomarker-clickable, .result-title'
+        ).forEach(el => highlightMatchesInElement(el, query));
     }
 
     // Helper function to check if biomarker is valid
@@ -810,7 +894,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     function toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer) {
         //console.log('toggleBiomarkerDetails called with:', biomarkerName, panelContainer.id);
-        const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
+        const loincForKey = (biomarkerData?.loinc || biomarkerElement?.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
+        const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}-${loincForKey}`;
         let detailsContainer = document.getElementById(biomarkerKey);
         console.log('Looking for details container with key:', biomarkerKey, 'Found:', detailsContainer);
 
@@ -820,6 +905,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (isVisible) {
                 detailsContainer.classList.remove('show');
                 biomarkerElement.classList.remove('expanded');
+                
+                adjustBiomarkerDetailsMaxHeight(panelContainer);
+
+                // Remove the eye icon when collapsing
+                {
+                    const existingEye = biomarkerElement.parentElement
+                        ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
+                        : null;
+                    if (existingEye) existingEye.remove();
+                }
+
                 console.log('Hiding biomarker details');
 
                 const anyExpanded = panelContainer.querySelector('.biomarker-detail-expanded.show');
@@ -829,7 +925,37 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 detailsContainer.classList.add('show');
                 biomarkerElement.classList.add('expanded');
+                
+                // Add the eye icon next to the LOINC when expanding
+                {
+                    let eye = biomarkerElement.parentElement
+                        ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
+                        : null;
+
+                    if (!eye) {
+                        // Find the nearest .biomarker-loinc sibling (right after the name)
+                        let loincSpan = biomarkerElement.nextElementSibling;
+                        while (loincSpan && !(loincSpan.classList && loincSpan.classList.contains('biomarker-loinc'))) {
+                            loincSpan = loincSpan.nextElementSibling;
+                        }
+
+                        eye = document.createElement('img');
+                        eye.src = 'Eye.png';           // Make sure Eye.png is available
+                        eye.alt = 'Viewing';
+                        eye.className = 'biomarker-eye';
+                        eye.setAttribute('data-for', `${biomarkerKey}`);
+
+                        if (loincSpan) {
+                            loincSpan.insertAdjacentElement('afterend', eye);
+                        } else {
+                            // Fallback: place right after the biomarker name if no LOINC span
+                            biomarkerElement.insertAdjacentElement('afterend', eye);
+                        }
+                    }
+                }
+
                 panelContainer.classList.add('panel-expanded');
+                                adjustBiomarkerDetailsMaxHeight(panelContainer);
                 console.log('Showing biomarker details');
             }
         } else {
@@ -855,9 +981,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const detail = existingDetails[i];
                 const detailId = detail.id;
 
-                const matchIndex = allClickables.findIndex(el =>
-                    `${panelContainer.id}-${el.getAttribute('data-biomarker').replace(/\s+/g, '-')}` === detailId
-                );
+                const matchIndex = allClickables.findIndex(el => {
+                    const ln = (el.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
+                    const idForEl = `${panelContainer.id}-${el.getAttribute('data-biomarker').replace(/\s+/g, '-')}-${ln}`;
+                    return idForEl === detailId;
+                });
 
                 if (matchIndex > thisIndex && detail.parentNode === biomarkerDetailsContainer) {
                     biomarkerDetailsContainer.insertBefore(detailsContainer, detail);
@@ -874,17 +1002,45 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => {
                 detailsContainer.classList.add('show');
                 biomarkerElement.classList.add('expanded');
+                
+                // Add the eye icon next to the LOINC when creating new details
+                {
+                    let eye = biomarkerElement.parentElement
+                        ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
+                        : null;
+
+                    if (!eye) {
+                        // Find the nearest .biomarker-loinc sibling (right after the name)
+                        let loincSpan = biomarkerElement.nextElementSibling;
+                        while (loincSpan && !(loincSpan.classList && loincSpan.classList.contains('biomarker-loinc'))) {
+                            loincSpan = loincSpan.nextElementSibling;
+                        }
+
+                        eye = document.createElement('img');
+                        eye.src = 'Eye.png';           // ensure file exists and name/case match
+                        eye.alt = 'Viewing';
+                        eye.className = 'biomarker-eye';
+                        eye.setAttribute('data-for', `${biomarkerKey}`);
+
+                        if (loincSpan) {
+                            loincSpan.insertAdjacentElement('afterend', eye);
+                        } else {
+                            // Fallback: place right after the biomarker name if no LOINC span
+                            biomarkerElement.insertAdjacentElement('afterend', eye);
+                        }
+                    }
+                }
                 panelContainer.classList.add('panel-expanded');
+                adjustBiomarkerDetailsMaxHeight(panelContainer);
             }, 10);
         }
     }
 
 
     function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
-        const biomarkerKey = biomarkerName.trim().toLowerCase();
-        let biomarkerInfo = biomarkerUrlMap.get(biomarkerKey);
         
-        // Verify calculation assay type based on LOINC match
+                const assayKey = makeBiomarkerKey(biomarkerName, biomarkerData?.loinc);
+        let biomarkerInfo = biomarkerUrlMap.get(assayKey);
         biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, biomarkerData?.loinc);
         
         const detailsDiv = document.createElement('div');
@@ -941,13 +1097,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>`;
         }
 
-        if (biomarkerInfo && biomarkerInfo.description) {
+        const loincName = (biomarkerInfo && biomarkerInfo.description) ? biomarkerInfo.description
+            : (biomarkerData && biomarkerData.loincName ? biomarkerData.loincName : biomarkerName);
+
             detailsContent += `
                 <div class="detail-item">
                     <span class="detail-label">LOINC Name:</span>
-                    <span class="detail-value">${biomarkerInfo.description}</span>
+                    <span class="detail-value">${loincName}</span>
                 </div>`;
-        }
 
         // Add separator line between biomarker info and assay info
         detailsContent += `<div class="detail-separator"></div>`;
@@ -1067,6 +1224,46 @@ document.addEventListener('DOMContentLoaded', function() {
         return detailsDiv;
     }
 
+        // Ensure biomarker details container doesn't overflow past the panel bottom.
+    function adjustBiomarkerDetailsMaxHeight(panelContainer) {
+        if (!panelContainer) return;
+        const detailsContainer = panelContainer.querySelector('.biomarker-details-container');
+        if (!detailsContainer) return;
+
+        // Make it scroll if needed
+        detailsContainer.style.overflowY = 'auto';
+
+        try {
+            const panelRect = panelContainer.getBoundingClientRect();
+            const detailsRect = detailsContainer.getBoundingClientRect();
+
+            // top offset of detailsContainer relative to panel top
+            const topOffset = Math.max(0, detailsRect.top - panelRect.top);
+
+            // account for panel's vertical padding
+            const cs = window.getComputedStyle(panelContainer);
+            const paddingBottom = parseFloat(cs.paddingBottom) || 0;
+
+            // compute available height within the panel for the details container
+            let maxH = panelContainer.clientHeight - topOffset - paddingBottom - 8; // small safety margin
+
+            // If result is nonsensical (panel auto-sized), fallback to a large value
+            if (!isFinite(maxH) || maxH < 100) {
+                maxH = 1000;
+            }
+
+            detailsContainer.style.maxHeight = Math.max(80, Math.floor(maxH)) + 'px';
+        } catch (e) {
+            // Fallback: don't crash if DOM measurement fails
+            detailsContainer.style.maxHeight = '1000px';
+        }
+    }
+
+    // Recompute on window resize so cutoff follows panel size
+    window.addEventListener('resize', function() {
+        document.querySelectorAll('.panel-container').forEach(pc => adjustBiomarkerDetailsMaxHeight(pc));
+    });
+
 
    // Expand all biomarkers for a panel
    function expandAllBiomarkers(panelContainer) {
@@ -1078,8 +1275,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const loincCode = biomarkerElement.getAttribute('data-loinc');
         const rowIndex = biomarkerElement.getAttribute('data-row-index');
         const biomarkerColumnIndex = biomarkerElement.getAttribute('data-biomarker-column-index');
-        const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
-        
+        const ln = (loincCode || '').replace(/[^A-Za-z0-9-]/g,'');
+        const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}-${ln}`;        
         let detailsContainer = document.getElementById(biomarkerKey);
 
         const biomarkerData = {
@@ -1096,6 +1293,39 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show if hidden
             detailsContainer.classList.add('show');
             biomarkerElement.classList.add('expanded');
+            
+            adjustBiomarkerDetailsMaxHeight(panelContainer);
+
+            // Ensure the eye icon is present when bulk-expanding
+            {
+                const biomarkerName = biomarkerElement.getAttribute('data-biomarker');
+                const ln = (biomarkerElement.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
+                const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}-${ln}`;
+
+                let eye = biomarkerElement.parentElement
+                    ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
+                    : null;
+
+                if (!eye) {
+                    let loincSpan = biomarkerElement.nextElementSibling;
+                    while (loincSpan && !(loincSpan.classList && loincSpan.classList.contains('biomarker-loinc'))) {
+                        loincSpan = loincSpan.nextElementSibling;
+                    }
+
+                    eye = document.createElement('img');
+                    eye.src = 'Eye.png';
+                    eye.alt = 'Viewing';
+                    eye.className = 'biomarker-eye';
+                    eye.setAttribute('data-for', biomarkerKey);
+
+                    if (loincSpan) {
+                        loincSpan.insertAdjacentElement('afterend', eye);
+                    } else {
+                        biomarkerElement.insertAdjacentElement('afterend', eye);
+                    }
+                }
+            }
+
             anyExpanded = true;
         }
     });
@@ -1103,6 +1333,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Only add expansion styling if at least one was opened
     if (anyExpanded) {
         panelContainer.classList.add('panel-expanded');
+        adjustBiomarkerDetailsMaxHeight(panelContainer);
     }
 }
 
@@ -1113,12 +1344,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
         biomarkerElements.forEach(biomarkerElement => {
             const biomarkerName = biomarkerElement.getAttribute('data-biomarker');
-            const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}`;
+            const ln = (biomarkerElement.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
+            const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}-${ln}`;
 
             const detailsContainer = document.getElementById(biomarkerKey);
 
             // Always remove highlight from biomarker
             biomarkerElement.classList.remove('expanded');
+            
+            // Remove eye icon when bulk-collapsing
+            {
+                const biomarkerName = biomarkerElement.getAttribute('data-biomarker');
+                const ln = (biomarkerElement.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
+                const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}-${ln}`;
+
+                const eye = biomarkerElement.parentElement
+                    ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
+                    : null;
+                if (eye) eye.remove();
+            }
+
 
             // Hide details if visible
             if (detailsContainer && detailsContainer.classList.contains('show')) {
@@ -1130,6 +1375,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Remove expansion class if anything was collapsed
         if (anyCollapsed) {
             panelContainer.classList.remove('panel-expanded');
+            adjustBiomarkerDetailsMaxHeight(panelContainer);
         }
 
     }
@@ -1754,14 +2000,18 @@ document.addEventListener('DOMContentLoaded', function() {
            const vendor = vendorColumn >= 0 && row[vendorColumn] ? row[vendorColumn].toString().trim() : '';
            const catalog = catalogColumn >= 0 && row[catalogColumn] ? row[catalogColumn].toString().trim() : '';
 
-           if (name) {
-               urlMap.set(name.trim().toLowerCase(), {
+            const loincFromUrl = extractLoincFromUrl(url);
+            if (name && loincFromUrl) {
+                const assayKey = makeBiomarkerKey(name, loincFromUrl);
+                urlMap.set(assayKey, {
                    url: url || '#',
                    description: description || '',
                    assayType: assayType || '',
                    kitUrl: kitUrl || '',
-                   vendor : vendor || '',
-                   catalog : catalog || ''
+                    vendor: vendor || '',
+                    catalog: catalog || '',
+                    loinc: loincFromUrl,
+                    biomarkerName: name
                });
            }
        }
@@ -1790,7 +2040,7 @@ document.addEventListener('DOMContentLoaded', function() {
                    const calcLoinc = row[calcLoincColumn] ? row[calcLoincColumn].toString().trim() : '';
                    
                    if (calcName && calcLoinc) {
-                       const key = calcName.trim().toLowerCase();
+                       const key = makeBiomarkerKey(calcName, calcLoinc);
                        
                        // Extract associated biomarkers for this calculation
                        const associatedBiomarkers = [];
@@ -1818,10 +2068,10 @@ document.addEventListener('DOMContentLoaded', function() {
                            // Store original assay type and mark as potential calculation
                            urlMap.set(key, {
                                ...existingData,
-                               originalAssayType: existingData.assayType, // Store original
-                               assayType: 'Calculation', // Tentatively set to Calculation
-                               calculationLoinc: calcLoinc, // Store for verification
-                               associatedBiomarkers: associatedBiomarkers // Store associated biomarkers
+                            originalAssayType: existingData.assayType || existingData.originalAssayType,
+                            assayType: 'Calculation',
+                            calculationLoinc: calcLoinc,
+                            associatedBiomarkers: associatedBiomarkers
                            });
                            console.log(`Marked ${calcName} as potential Calculation assay type (LOINC: ${calcLoinc}) with ${associatedBiomarkers.length} associated biomarkers`);
                        } else {
@@ -1832,7 +2082,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                assayType: 'Calculation',
                                kitUrl: '',
                                calculationLoinc: calcLoinc,
-                               associatedBiomarkers: associatedBiomarkers
+                                                           associatedBiomarkers: associatedBiomarkers,
+                            biomarkerName: calcName,
+                            loinc: calcLoinc
                            });
                            console.log(`Added new calculation biomarker: ${calcName} with ${associatedBiomarkers.length} associated biomarkers`);
                        }
@@ -2059,40 +2311,27 @@ document.addEventListener('DOMContentLoaded', function() {
         fusePanels = new Fuse(allContentData, panelOptions);
         console.log("Fuse for panels initialized.");
 
-        // For biomarkers: search by all relevant fields
-        const biomarkerSearchArray = [];
-        biomarkerToPanelsMap.forEach(biomarkerInfo => {
-            const biomarkerKey = biomarkerInfo.biomarkerName.toLowerCase();
-            let additionalInfo = biomarkerUrlMap.get(biomarkerKey);
-            
-            // Ensure additionalInfo is verified for calculation types
-            if (additionalInfo && additionalInfo.calculationLoinc) {
-                additionalInfo = verifyCalculationAssayType(additionalInfo, biomarkerInfo.loincCode);
-            }
-
-            biomarkerSearchArray.push({
-                biomarkerName: biomarkerInfo.biomarkerName,
-                loincCode: biomarkerInfo.loincCode,
-                description: additionalInfo?.description || '',
-                assayType: additionalInfo?.assayType || '',
-                panels: biomarkerInfo.panels // We'll keep this for the rendering function
-            });
-        });
+        // For biomarkers: search by biomarkerName + loinc (composite key)
+        const biomarkerNamesArray = Array.from(biomarkerToPanelsMap.values()).map(b => ({
+            biomarkerName: b.biomarkerName,
+            loincCode: b.loincCode || '',
+            originalKey: makeBiomarkerKey(b.biomarkerName, b.loincCode) // <-- composite key
+        }));
 
         const biomarkerOptions = {
-            keys: ['biomarkerName', 'loincCode', 'description', 'assayType'],
+            keys: ['biomarkerName', 'loincCode'], // allow matching on LOINC too
             threshold: 0.1,
             includeScore: true
         };
-        fuseBiomarkers = new Fuse(biomarkerSearchArray, biomarkerOptions);
-        console.log("Fuse for biomarkers initialized with all relevant fields.");
+        fuseBiomarkers = new Fuse(biomarkerNamesArray, biomarkerOptions);
+        console.log("Fuse for biomarkers initialized.");
 
         // For suggestions: uses a combination of panel and biomarker words
         const wordSuggestionOptions = {
-            keys: ['word'],
-            threshold: 0.3,
-            ignoreLocation: true,
-            minMatchCharLength: 2
+            keys: ['word'], // Each item in allSuggestionWords will be mapped to { word: "the_word" }
+            threshold: 0.3, // Looser threshold for suggestions/typos
+            ignoreLocation: true, // Allows matching anywhere in the word, not just start
+            minMatchCharLength: 2 // Minimum length for suggestions
         };
         fuseWordSuggestions = new Fuse(allSuggestionWords.map(word => ({ word: word })), wordSuggestionOptions);
         console.log("Fuse for word suggestions initialized.");
@@ -2100,24 +2339,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
     function getSuggestions(query) {
-        let suggestions = new Set();
-        const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'all';
+        let suggestions = new Set(); // Use a Set directly to handle uniqueness and automatically remove duplicates
+        const searchMode = document.querySelector('input[name="searchMode"]:checked')?.value || 'all'; //get search mode
         
         // Get individual word suggestions
-        const wordLevelSuggestions = fuseWordSuggestions.search(query, { limit: 10 });
+        const wordLevelSuggestions = fuseWordSuggestions.search(query, { limit: 10 }); // Adjust limit as needed
         wordLevelSuggestions.forEach(result => {
             suggestions.add(result.item.word);
         });
 
         // Add suggestions based on the selected search mode
-        if (searchMode === 'all' || searchMode === 'panels') {
-            const panelNameSuggestions = fusePanels.search(query, { threshold: 0.4, limit: 10 });
+            const panelNameSuggestions = fusePanels.search(query, { threshold: 0.4, limit: 10 }); // Adjust limit as needed
             panelNameSuggestions.forEach(result => {
-                suggestions.add(result.item.keyword);
+            suggestions.add(result.item.keyword); // 'keyword' is the lowercase panel name
             });
-        }
 
-        if (searchMode === 'all' || searchMode === 'biomarkers') {
+        if (searchMode === 'all') {
             const biomarkerNameSuggestions = fuseBiomarkers.search(query, { threshold: 0.4, limit: 10 });
             biomarkerNameSuggestions.forEach(result => {
                 suggestions.add(result.item.biomarkerName);
@@ -2202,7 +2439,7 @@ function buildBiomarkerToPanelsMap() {
     allContentData.forEach((panelData, panelIndex) => {
         if (panelData.biomarkerData && panelData.biomarkerData.length > 0) {
             panelData.biomarkerData.forEach(biomarker => {
-                const biomarkerKey = biomarker.name.trim().toLowerCase();
+                const biomarkerKey = makeBiomarkerKey(biomarker.name, biomarker.loinc);
                 
                 if (!biomarkerToPanelsMap.has(biomarkerKey)) {
                     biomarkerToPanelsMap.set(biomarkerKey, {
@@ -2211,11 +2448,7 @@ function buildBiomarkerToPanelsMap() {
                         panels: []
                     });
                 }
-                
-                biomarkerToPanelsMap.get(biomarkerKey).panels.push({
-                    panelIndex: panelIndex,
-                    panelData: panelData
-                });
+                biomarkerToPanelsMap.get(biomarkerKey).panels.push({ panelIndex, panelData });
             });
         }
     });
@@ -2244,11 +2477,9 @@ function createBiomarkerResult(biomarkerInfo, index) {
     biomarkerContainer.id = `biomarker-result-${index}`;
     
     // Get additional biomarker details from biomarkerUrlMap
-    const biomarkerKey = biomarkerInfo.biomarkerName.trim().toLowerCase();
-    let additionalInfo = biomarkerUrlMap.get(biomarkerKey);
-    
-    // Verify calculation assay type based on LOINC match
-    additionalInfo = verifyCalculationAssayType(additionalInfo, biomarkerInfo.loincCode);
+    const assayKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
+    let additionalInfo = biomarkerUrlMap.get(assayKey);
+        additionalInfo = verifyCalculationAssayType(additionalInfo, biomarkerInfo.loincCode);
     
     let biomarkerContent = `
         <div class="search-result-header biomarker-header">
@@ -2790,16 +3021,8 @@ function addBiomarkerSearchStyles() {
             /* .panel-container .panel-content h3 styles consolidated with earlier definition */
             
             .panel-container .panel-content h3:before {
-                content: "PANEL";
-                font-size: 11px;
-                font-weight: bold;
-                background: #28a745;
-                color: white;
-                padding: 4px 8px;
-                border-radius: 12px;
-                margin-right: 15px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
+                content: none !important;
+                display: none !important;
             }
             
             .content-paragraph:not(.hide) {
@@ -2896,17 +3119,17 @@ function filterPanelsOnly() {
         }
         paragraphContainer.appendChild(noResultsDiv);
     }
+    clearSearchHighlights();
+    applySearchHighlights(query); // highlight in panel titles and biomarker chips
+
 }
 
 function renderBiomarkerAsPanel(biomarkerInfo, index) {
-    const biomarkerKey = biomarkerInfo.biomarkerName.trim().toLowerCase();
-    let additionalInfo = biomarkerUrlMap.get(biomarkerKey);
-
-    // Get the biomarker type from the pure data (already exists)
-    const biomarkerType = getBiomarkerTypeFromPureData(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
+    const compKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
+    let additionalInfo = biomarkerUrlMap.get(compKey);
     
     // Get the list of panels this biomarker is in
-    const panelsInBiomarker = biomarkerToPanelsMap.get(biomarkerInfo.biomarkerName.toLowerCase())?.panels || [];
+    const panelsInBiomarker = biomarkerToPanelsMap.get(compKey)?.panels || [];
 
     const panelWrapper = document.createElement('div');
     panelWrapper.classList.add('panel-wrapper');
@@ -3011,11 +3234,10 @@ function filterBiomarkersOnly() {
         paragraphContainer.appendChild(resultsSummary);
 
         matchingBiomarkers.forEach((biomarkerInfo, index) => {
-            const panels = biomarkerToPanelsMap.get(biomarkerInfo.biomarkerName.toLowerCase())?.panels || [];
-            
-            // Get additional biomarker details from biomarkerUrlMap
-            const biomarkerKey = biomarkerInfo.biomarkerName.trim().toLowerCase();
-            let additionalInfo = biomarkerUrlMap.get(biomarkerKey);
+            const compKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
+            const panels = biomarkerToPanelsMap.get(compKey)?.panels || [];
+
+            let additionalInfo = biomarkerUrlMap.get(compKey);
             additionalInfo = verifyCalculationAssayType(additionalInfo, biomarkerInfo.loincCode);
             
             // Get biomarker type
@@ -3073,15 +3295,24 @@ function filterBiomarkersOnly() {
                     if (!uniquePanels.has(panelData.keyword)) {
                         uniquePanels.add(panelData.keyword);
                         detailsHtml += `
-                            <li>
-                                <span class="associated-panel-title">${panelData.keyword}</span>
-                                <span class="associated-panel-meta">
-                                    ${panelData.cpt ? `CPT: ${panelData.cpt}` : ''} |
-                                    ${panelData.testNumber ? `Test #: ${panelData.testNumber}` : ''}
-                                </span>
-                                <img src="open-tab.png" class="open-new-tab-icon" title="Open in new tab" onclick="window.openPanelInNewTab('${encodeURIComponent(panelData.keyword)}')"/>
+                            <li class="associated-panel-container">
+                                <div class="associated-panel-content" onclick="toggleAssociatedPanel(this, '${panelData.keyword.replace(/'/g, "\\'")}')">
+                                    <div class="associated-panel-header">
+                                        <span class="associated-panel-label">PANEL</span>
+                                        <span class="associated-panel-title">${panelData.keyword}</span>
+                                        <img src="open-tab.png"
+                                            class="open-new-tab-icon"
+                                            title="Open in new tab"
+                                            onclick="event.stopPropagation(); window.openPanelInNewTab('${encodeURIComponent(panelData.keyword)}')"/>
+                                    </div>
+                                    <div class="associated-panel-meta">
+                                        ${panelData.cpt ? `CPT: ${panelData.cpt}` : ''}${panelData.cpt && panelData.testNumber ? ' | ' : ''}${panelData.testNumber ? `Test #: ${panelData.testNumber}` : ''}
+                                    </div>
+                                    <div class="associated-panel-details" style="display:none;"></div>
+                                </div>
                             </li>
                         `;
+
                     }
                 });
                 detailsHtml += '</ul>';
@@ -3100,6 +3331,9 @@ function filterBiomarkersOnly() {
         noResultsDiv.innerHTML = `<p style="text-align: center; color: #666; font-style: italic;">No matching biomarker results found for "${query}"</p>`;
         paragraphContainer.appendChild(noResultsDiv);
     }
+    clearSearchHighlights();
+    applySearchHighlights(query);
+
 }
 
 
@@ -3197,12 +3431,12 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
 
     // Search for matching biomarkers
     const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => {
-        const biomarkerKey = b.biomarkerName.toLowerCase();
-        let biomarkerInfo = biomarkerUrlMap.get(biomarkerKey);
+        const compKey = makeBiomarkerKey(b.biomarkerName, b.loincCode); // composite
+        let biomarkerInfo = biomarkerUrlMap.get(compKey);
         biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, b.loincCode);
         return {
             biomarkerName: b.biomarkerName,
-            originalKey: biomarkerKey,
+            originalKey: compKey, // <-- composite
             loincCode: b.loincCode,
             description: biomarkerInfo?.description || '',
             assayType: biomarkerInfo?.assayType || ''
@@ -3275,6 +3509,9 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
             paragraphContainer.appendChild(noResultsDiv);
         }
     }
+    clearSearchHighlights();
+    applySearchHighlights(lowerQuery);
+
 }
 
 
@@ -3461,6 +3698,13 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
         searchInput.addEventListener('input', function() {
             const query = searchInput.value.trim();
             const lowerQuery = query.toLowerCase(); // Consistent use of lowerQuery
+
+            // Also clear any biomarker expansions/bold from a previous search
+            document.querySelectorAll('.biomarker-clickable.expanded').forEach(el => el.classList.remove('expanded'));
+            document.querySelectorAll('.biomarker-detail-expanded.show').forEach(el => el.classList.remove('show'));
+            // Remove any eye icons left behind so the view fully resets
+            document.querySelectorAll('.biomarker-eye').forEach(img => img.remove());
+
 
             const expandedPanels = document.querySelectorAll('.panel-container.panel-expanded');
             expandedPanels.forEach(panel => {
