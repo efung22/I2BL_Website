@@ -127,3 +127,35 @@ body {
     background-color: #f0f0f0;
 }
 
+
+/* Style for the nested panel list within a biomarker panel */
+.associated-panels-biomarker-list {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.panel-container.biomarker-search-result {
+    background-color: #c8f2ff; /* A light blue color */
+    border: 2px solid #4a90e2;
+}
+
+
+
+.associated-panels-biomarker-list li {
+    margin-bottom: 10px;
+    padding: 12px;
+    background-color: #ffffff;
+    border: 2px solid #4a90e2;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+
+
+.associated-panel-title {
+    font-weight: bold;
+    color: #28a745;
+    margin-right: 10px;
+}
+
