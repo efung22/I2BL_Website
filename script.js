@@ -240,13 +240,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     border-radius: 6px;
                     padding: 12px;
                     margin-bottom: 15px;
-                    display: none; /* Hidden by default */
-                    animation: none; 
+                    display: none;   /* remain non-rendered until JS sets display */
+                    opacity: 0;      /* start invisible */
+                    transition: opacity 220ms ease; /* fade in/out duration */
+                    will-change: opacity;
                 }
-                
-                .biomarker-detail-expanded.show {
-                    display: block; /* Show when .show class is added */
+
+                /* Visible state: display is set from JS, class triggers opacity change */
+                .biomarker-detail-expanded.visible {
+                    display: block;
+                    opacity: 1;
                 }
+
 
                 .biomarker-detail-expanded.invalid-biomarker {
                     display: none; /* Hidden by default */
@@ -357,15 +362,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     color: #333;
                 }
                 
-                .associated-biomarker-loinc {
+                .biomarker-loinc,
+                .associated-biomarker-loinc,
+                .loinc-code {
+                    font-size: 0.8em;
                     color: #666;
-                    font-size: 0.9em;
+                    vertical-align: baseline;
                 }
-                
+                                
                 .biomarker-clickable {
                     color: #28a745;
                     cursor: pointer;
-                    text-decoration: underline;
                     transition: color 0.2s;
                 }
                 
@@ -376,7 +383,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 .associated-biomarker-clickable {
                     color: #007bff;
                     cursor: pointer;
-                    text-decoration: underline;
                     transition: color 0.2s;
                 }
                 
@@ -892,150 +898,129 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return homepageButton;
     }
-    function toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer) {
-        //console.log('toggleBiomarkerDetails called with:', biomarkerName, panelContainer.id);
-        const loincForKey = (biomarkerData?.loinc || biomarkerElement?.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
-        const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}-${loincForKey}`;
-        let detailsContainer = document.getElementById(biomarkerKey);
-        console.log('Looking for details container with key:', biomarkerKey, 'Found:', detailsContainer);
+        function toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer) {
+            const loincForKey = (biomarkerData?.loinc || biomarkerElement?.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
+            const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}-${loincForKey}`;
+            let detailsContainer = document.getElementById(biomarkerKey);
 
-        if (detailsContainer) {
-            const isVisible = detailsContainer.classList.contains('show');
-            console.log('Details container exists, currently visible:', isVisible);
-            if (isVisible) {
-                detailsContainer.classList.remove('show');
-                biomarkerElement.classList.remove('expanded');
-                
-                adjustBiomarkerDetailsMaxHeight(panelContainer);
+            if (detailsContainer) {
+                // Visible state uses class 'visible' instead of 'show'
+                const isVisible = detailsContainer.classList.contains('visible');
+                if (isVisible) {
+                    // begin fade out
+                    detailsContainer.classList.remove('visible');
+                    biomarkerElement.classList.remove('expanded');
 
-                // Remove the eye icon when collapsing
-                {
-                    const existingEye = biomarkerElement.parentElement
+                    // when fade completes, set display none and adjust heights / panel classes
+                    const onFadeOut = (e) => {
+                        if (e.propertyName !== 'opacity') return;
+                        detailsContainer.removeEventListener('transitionend', onFadeOut);
+                        detailsContainer.style.display = 'none';
+
+                        // remove eye icon
+                        const existingEye = biomarkerElement.parentElement
+                            ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
+                            : null;
+                        if (existingEye) existingEye.remove();
+
+                        // if no other visible details in this panel, collapse the panel-expanded styling
+                        const anyExpanded = panelContainer.querySelector('.biomarker-detail-expanded.visible');
+                        if (!anyExpanded) panelContainer.classList.remove('panel-expanded');
+
+                        adjustBiomarkerDetailsMaxHeight(panelContainer);
+                    };
+                    detailsContainer.addEventListener('transitionend', onFadeOut);
+                } else {
+                    // show: set display block then add 'visible' to animate opacity
+                    detailsContainer.style.display = 'block';
+                    // force a reflow so transition will run
+                    requestAnimationFrame(() => detailsContainer.classList.add('visible'));
+
+                    biomarkerElement.classList.add('expanded');
+
+                    // add eye icon if missing (same logic you used)
+                    let eye = biomarkerElement.parentElement
                         ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
                         : null;
-                    if (existingEye) existingEye.remove();
-                }
+                    if (!eye) {
+                        let loincSpan = biomarkerElement.nextElementSibling;
+                        while (loincSpan && !(loincSpan.classList && loincSpan.classList.contains('biomarker-loinc'))) {
+                            loincSpan = loincSpan.nextElementSibling;
+                        }
+                        eye = document.createElement('img');
+                        eye.src = 'Eye.png';
+                        eye.alt = 'Viewing';
+                        eye.className = 'biomarker-eye';
+                        eye.setAttribute('data-for', `${biomarkerKey}`);
+                        // Make eye non-interactive so it doesn't interfere with clicks
+                        eye.style.pointerEvents = 'none';
+                        if (loincSpan) loincSpan.insertAdjacentElement('afterend', eye);
+                        else biomarkerElement.insertAdjacentElement('afterend', eye);
+                    }
 
-                console.log('Hiding biomarker details');
-
-                const anyExpanded = panelContainer.querySelector('.biomarker-detail-expanded.show');
-                if (!anyExpanded) {
-                    panelContainer.classList.remove('panel-expanded');
+                    panelContainer.classList.add('panel-expanded');
+                    adjustBiomarkerDetailsMaxHeight(panelContainer);
                 }
             } else {
-                detailsContainer.classList.add('show');
-                biomarkerElement.classList.add('expanded');
-                
-                // Add the eye icon next to the LOINC when expanding
-                {
-                    let eye = biomarkerElement.parentElement
-                        ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
-                        : null;
+                // create new details element
+                detailsContainer = createBiomarkerDetailsElement(biomarkerName, biomarkerData, biomarkerKey);
 
-                    if (!eye) {
-                        // Find the nearest .biomarker-loinc sibling (right after the name)
-                        let loincSpan = biomarkerElement.nextElementSibling;
-                        while (loincSpan && !(loincSpan.classList && loincSpan.classList.contains('biomarker-loinc'))) {
-                            loincSpan = loincSpan.nextElementSibling;
-                        }
+                let biomarkerDetailsContainer = panelContainer.querySelector('.biomarker-details-container');
+                if (!biomarkerDetailsContainer) {
+                    biomarkerDetailsContainer = document.createElement('div');
+                    biomarkerDetailsContainer.className = 'biomarker-details-container';
+                    panelContainer.appendChild(biomarkerDetailsContainer);
+                }
 
-                        eye = document.createElement('img');
-                        eye.src = 'Eye.png';           // Make sure Eye.png is available
-                        eye.alt = 'Viewing';
-                        eye.className = 'biomarker-eye';
-                        eye.setAttribute('data-for', `${biomarkerKey}`);
+                // insert in original order (your original insertion logic)
+                const allClickables = Array.from(panelContainer.querySelectorAll('.biomarker-clickable'));
+                const thisIndex = allClickables.findIndex(el => el === biomarkerElement);
+                const existingDetails = Array.from(biomarkerDetailsContainer.querySelectorAll('.biomarker-detail-expanded'));
 
-                        if (loincSpan) {
-                            loincSpan.insertAdjacentElement('afterend', eye);
-                        } else {
-                            // Fallback: place right after the biomarker name if no LOINC span
-                            biomarkerElement.insertAdjacentElement('afterend', eye);
-                        }
+                let inserted = false;
+                for (let i = 0; i < existingDetails.length; i++) {
+                    const detail = existingDetails[i];
+                    const detailId = detail.id;
+                    const matchIndex = allClickables.findIndex(el => {
+                        const ln = (el.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
+                        const idForEl = `${panelContainer.id}-${el.getAttribute('data-biomarker').replace(/\s+/g, '-')}-${ln}`;
+                        return idForEl === detailId;
+                    });
+                    if (matchIndex > thisIndex && detail.parentNode === biomarkerDetailsContainer) {
+                        biomarkerDetailsContainer.insertBefore(detailsContainer, detail);
+                        inserted = true; break;
                     }
                 }
+                if (!inserted) biomarkerDetailsContainer.appendChild(detailsContainer);
 
-                panelContainer.classList.add('panel-expanded');
-                                adjustBiomarkerDetailsMaxHeight(panelContainer);
-                console.log('Showing biomarker details');
-            }
-        } else {
-            console.log('Creating new biomarker details element');
-            detailsContainer = createBiomarkerDetailsElement(biomarkerName, biomarkerData, biomarkerKey);
-
-            let biomarkerDetailsContainer = panelContainer.querySelector('.biomarker-details-container');
-            if (!biomarkerDetailsContainer) {
-                console.log('Creating new biomarker details container');
-                biomarkerDetailsContainer = document.createElement('div');
-                biomarkerDetailsContainer.className = 'biomarker-details-container';
-                panelContainer.appendChild(biomarkerDetailsContainer);
-            }
-
-            // Insert in original order based on clickable element order
-            const allClickables = Array.from(panelContainer.querySelectorAll('.biomarker-clickable'));
-            const thisIndex = allClickables.findIndex(el => el === biomarkerElement);
-
-            const existingDetails = Array.from(biomarkerDetailsContainer.querySelectorAll('.biomarker-detail-expanded'));
-
-            let inserted = false;
-            for (let i = 0; i < existingDetails.length; i++) {
-                const detail = existingDetails[i];
-                const detailId = detail.id;
-
-                const matchIndex = allClickables.findIndex(el => {
-                    const ln = (el.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
-                    const idForEl = `${panelContainer.id}-${el.getAttribute('data-biomarker').replace(/\s+/g, '-')}-${ln}`;
-                    return idForEl === detailId;
-                });
-
-                if (matchIndex > thisIndex && detail.parentNode === biomarkerDetailsContainer) {
-                    biomarkerDetailsContainer.insertBefore(detailsContainer, detail);
-                    inserted = true;
-                    break;
-                }
-            }
-
-
-            if (!inserted) {
-                biomarkerDetailsContainer.appendChild(detailsContainer);
-            }
-
-            setTimeout(() => {
-                detailsContainer.classList.add('show');
+                // show with fade (set display then add visible)
+                detailsContainer.style.display = 'block';
+                requestAnimationFrame(() => detailsContainer.classList.add('visible'));
                 biomarkerElement.classList.add('expanded');
-                
-                // Add the eye icon next to the LOINC when creating new details
-                {
-                    let eye = biomarkerElement.parentElement
-                        ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
-                        : null;
 
-                    if (!eye) {
-                        // Find the nearest .biomarker-loinc sibling (right after the name)
-                        let loincSpan = biomarkerElement.nextElementSibling;
-                        while (loincSpan && !(loincSpan.classList && loincSpan.classList.contains('biomarker-loinc'))) {
-                            loincSpan = loincSpan.nextElementSibling;
-                        }
-
-                        eye = document.createElement('img');
-                        eye.src = 'Eye.png';           // ensure file exists and name/case match
-                        eye.alt = 'Viewing';
-                        eye.className = 'biomarker-eye';
-                        eye.setAttribute('data-for', `${biomarkerKey}`);
-
-                        if (loincSpan) {
-                            loincSpan.insertAdjacentElement('afterend', eye);
-                        } else {
-                            // Fallback: place right after the biomarker name if no LOINC span
-                            biomarkerElement.insertAdjacentElement('afterend', eye);
-                        }
+                // add eye icon like above
+                let eye = biomarkerElement.parentElement
+                    ? biomarkerElement.parentElement.querySelector(`.biomarker-eye[data-for="${biomarkerKey}"]`)
+                    : null;
+                if (!eye) {
+                    let loincSpan = biomarkerElement.nextElementSibling;
+                    while (loincSpan && !(loincSpan.classList && loincSpan.classList.contains('biomarker-loinc'))) {
+                        loincSpan = loincSpan.nextElementSibling;
                     }
+                    eye = document.createElement('img');
+                    eye.src = 'Eye.png';
+                    eye.alt = 'Viewing';
+                    eye.className = 'biomarker-eye';
+                    eye.setAttribute('data-for', `${biomarkerKey}`);
+                    eye.style.pointerEvents = 'none';
+                    if (loincSpan) loincSpan.insertAdjacentElement('afterend', eye);
+                    else biomarkerElement.insertAdjacentElement('afterend', eye);
                 }
+
                 panelContainer.classList.add('panel-expanded');
                 adjustBiomarkerDetailsMaxHeight(panelContainer);
-            }, 10);
+            }
         }
-    }
-
 
     function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
         
@@ -1173,10 +1158,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>`;
         }
 
-        //  New section: List of panels using this biomarker
-        const panelsUsing = allContentData
-            .map((panel, idx) => ({ ...panel, index: idx }))
-            .filter(panel => (panel.biomarkers || []).some(b => b.toLowerCase() === biomarkerName.toLowerCase()));
+        //  New section: List of panels using this biomarker (composite key: name + LOINC)
+        const currentLoinc = (biomarkerData?.loinc || biomarkerInfo?.loincCode || '').trim();
+        const compKey = makeBiomarkerKey(biomarkerName, currentLoinc);
+
+        // Pull the exact panels for THIS name+LOINC from the map
+        const panelsUsing = (biomarkerToPanelsMap.get(compKey)?.panels || [])
+            .map(ref => ref.panelData); // keep just the panel objects
 
         if (panelsUsing.length > 0) {
             const panelListId = `${elementId}-panel-list`;
@@ -1193,24 +1181,25 @@ document.addEventListener('DOMContentLoaded', function() {
             panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers, statusIcon, tooltipText }) => {
                 detailsContent += `
                     <li class="associated-panel-container">
-                    <div class="associated-panel-content">
-                        <div class="associated-panel-header">
-                            <span class="associated-panel-label">PANEL</span>
-                            <span class="associated-panel-title">${keyword}</span>
-                            <img 
-                                src="open-tab.png" 
-                                class="open-new-tab-icon" 
-                                title="Open in new tab"
-                                onclick="openPanelInNewTab('${encodeURIComponent(keyword)}')"
-                            />
+                        <div class="associated-panel-content">
+                            <div class="associated-panel-header">
+                                <span class="associated-panel-label">PANEL</span>
+                                <span class="associated-panel-title">${keyword}</span>
+                                <img 
+                                    src="open-tab.png" 
+                                    class="open-new-tab-icon" 
+                                    title="Open in new tab"
+                                    onclick="openPanelInNewTab('${encodeURIComponent(keyword)}')"
+                                />
+                            </div>
+                            <p class="associated-panel-meta">
+                                ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
+                                ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
+                                ${(biomarkers?.length || 0)} biomarkers
+                                <span class="biomarker-panel-status">${statusIcon || ''}<div class="panel-tooltip">${tooltipText || ''}</div></span>
+                            </p>
                         </div>
-                        <p class="associated-panel-meta">
-                            ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
-                            ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
-                            ${biomarkers?.length || 0} biomarkers<span class="biomarker-panel-status">${statusIcon}<div class="panel-tooltip">${tooltipText}</div></span>
-                        </p>
-                    </div>
-                </li>`;
+                    </li>`;
             });
 
             detailsContent += `
@@ -1218,7 +1207,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>`;
         }
-
 
         detailsDiv.innerHTML = detailsContent;
         return detailsDiv;
@@ -1291,7 +1279,8 @@ document.addEventListener('DOMContentLoaded', function() {
             anyExpanded = true;
         } else if (!detailsContainer.classList.contains('show')) {
             // Show if hidden
-            detailsContainer.classList.add('show');
+            detailsContainer.style.display = 'block';
+            requestAnimationFrame(() => detailsContainer.classList.add('visible'));
             biomarkerElement.classList.add('expanded');
             
             adjustBiomarkerDetailsMaxHeight(panelContainer);
@@ -1364,12 +1353,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (eye) eye.remove();
             }
 
-
             // Hide details if visible
-            if (detailsContainer && detailsContainer.classList.contains('show')) {
-                detailsContainer.classList.remove('show');
+            if (detailsContainer && detailsContainer.classList.contains('visible')) {
+                // fade out, then set display none on transition end
+                detailsContainer.classList.remove('visible');
+                detailsContainer.addEventListener('transitionend', function _onFade(e){
+                    if (e.propertyName !== 'opacity') return;
+                    detailsContainer.removeEventListener('transitionend', _onFade);
+                    detailsContainer.style.display = 'none';
+                });
+                biomarkerElement.classList.remove('expanded');
                 anyCollapsed = true;
             }
+
         });
 
         // Remove expansion class if anything was collapsed
@@ -2234,7 +2230,7 @@ document.addEventListener('DOMContentLoaded', function() {
                
                // Add LOINC code if available
                if (biomarker.loinc) {
-                   biomarkerHtml += ` <span class="loinc-code" style="color: #666;">(LOINC: ${biomarker.loinc})</span>`;
+                   biomarkerHtml += ` <span class="biomarker-loinc">(LOINC: ${biomarker.loinc})</span>`;
                }
                
                return biomarkerHtml;
