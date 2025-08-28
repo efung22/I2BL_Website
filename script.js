@@ -3040,7 +3040,7 @@ function addBiomarkerSearchStyles() {
 }
 
 // Function to filter panels only.
-function filterPanelsOnly() {
+function filterPanelsAndBiomarkers() {
     const query = searchInput.value.trim();
     const lowerQuery = query.toLowerCase();
     const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
@@ -3371,7 +3371,7 @@ function initializeBiomarkerSearch() {
 
     // 2. Re-render the initial panel list before filtering.
     // This is the key step to make sure the panels exist for the other search modes.
-    if (searchMode !== 'biomarkers') {
+    if (searchMode === 'panels') {
         renderInitialParagraphs();
     }
 
@@ -3383,15 +3383,14 @@ function initializeBiomarkerSearch() {
 
     // 4. Handle search mode routing
     if (searchMode === 'panels') {
-        filterPanelsOnly();
+        filterContentWithBiomarkersEnhanced(lowerQuery);
     } else if (searchMode === 'biomarkers') {
         filterBiomarkersOnly();
-    } else {
-        filterContentWithBiomarkersEnhanced(lowerQuery);
     }
     
     searchTriggeredFromDropdown = false;
 };
+
 // Enhanced function to search both panels and biomarkers using Fuse.js
 // Enhanced function to search both panels and biomarkers using Fuse.js
 function filterContentWithBiomarkersEnhanced(lowerQuery) {
@@ -3624,13 +3623,11 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
 
         initializeFuse(); // Initialize all Fuse instances here after data is ready
 
-        const checkboxAll = document.getElementById('searchModeAll');
         const checkboxPanels = document.getElementById('searchModePanels');
         const checkboxBiomarkers = document.getElementById('searchModeBiomarkers');
-        checkboxBiomarkers.addEventListener('change', filterContent);
         // Trigger filtering when search mode changes
-        checkboxAll.addEventListener('change', filterContent);
         checkboxPanels.addEventListener('change', filterContent);
+        checkboxBiomarkers.addEventListener('change', filterContent);
 
         // Handle clicks
         searchButton.addEventListener('click', filterContent);
