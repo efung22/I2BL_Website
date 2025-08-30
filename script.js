@@ -1024,7 +1024,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
         
-                const assayKey = makeBiomarkerKey(biomarkerName, biomarkerData?.loinc);
+        const assayKey = makeBiomarkerKey(biomarkerName, biomarkerData?.loinc);
         let biomarkerInfo = biomarkerUrlMap.get(assayKey);
         biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, biomarkerData?.loinc);
         
@@ -1159,12 +1159,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         //  New section: List of panels using this biomarker (composite key: name + LOINC)
-        const currentLoinc = (biomarkerData?.loinc || biomarkerInfo?.loincCode || '').trim();
-        const compKey = makeBiomarkerKey(biomarkerName, currentLoinc);
-
-        // Pull the exact panels for THIS name+LOINC from the map
-        const panelsUsing = (biomarkerToPanelsMap.get(compKey)?.panels || [])
-            .map(ref => ref.panelData); // keep just the panel objects
+        const loincCode = (biomarkerData?.loinc || biomarkerInfo?.loinc || '').trim();
+        const panelsUsing = (biomarkerToPanelsMap.get(loincCode)?.panels || [])
+            .map(ref => ref.panelData);
 
         if (panelsUsing.length > 0) {
             const panelListId = `${elementId}-panel-list`;
@@ -1211,6 +1208,42 @@ document.addEventListener('DOMContentLoaded', function() {
         detailsDiv.innerHTML = detailsContent;
         return detailsDiv;
     }
+
+        // Ensure biomarker details container doesn't overflow past the panel bottom.
+    function adjustBiomarkerDetailsMaxHeight(panelContainer) {
+        if (!panelContainer) return;
+        const detailsContainer = panelContainer.querySelector('.biomarker-details-container');
+        if (!detailsContainer) return;
+
+        // Make it scroll if needed
+        detailsContainer.style.overflowY = 'auto';
+
+        try {
+            const panelRect = panelContainer.getBoundingClientRect();
+            const detailsRect = detailsContainer.getBoundingClientRect();
+
+            // top offset of detailsContainer relative to panel top
+            const topOffset = Math.max(0, detailsRect.top - panelRect.top);
+
+            // account for panel's vertical padding
+            const cs = window.getComputedStyle(panelContainer);
+            const paddingBottom = parseFloat(cs.paddingBottom) || 0;
+
+            // compute available height within the panel for the details container
+            let maxH = panelContainer.clientHeight - topOffset - paddingBottom - 8; // small safety margin
+
+            // If result is nonsensical (panel auto-sized), fallback to a large value
+            if (!isFinite(maxH) || maxH < 100) {
+                maxH = 1000;
+            }
+
+            detailsContainer.style.maxHeight = Math.max(80, Math.floor(maxH)) + 'px';
+        } catch (e) {
+            // Fallback: don't crash if DOM measurement fails
+            detailsContainer.style.maxHeight = '1000px';
+        }
+    }
+
 
         // Ensure biomarker details container doesn't overflow past the panel bottom.
     function adjustBiomarkerDetailsMaxHeight(panelContainer) {
@@ -2311,11 +2344,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const biomarkerNamesArray = Array.from(biomarkerToPanelsMap.values()).map(b => ({
             biomarkerName: b.biomarkerName,
             loincCode: b.loincCode || '',
-            originalKey: makeBiomarkerKey(b.biomarkerName, b.loincCode) // <-- composite key
+            originalKey: b.loincCode // <-- Use only the LOINC code as the key
         }));
 
         const biomarkerOptions = {
-            keys: ['biomarkerName', 'loincCode'], // allow matching on LOINC too
+            keys: ['biomarkerName', 'loincCode'],
             threshold: 0.1,
             includeScore: true
         };
@@ -2431,12 +2464,14 @@ let biomarkerToPanelsMap = new Map();
 // Build biomarker-to-panels mapping from existing data
 function buildBiomarkerToPanelsMap() {
     biomarkerToPanelsMap.clear();
-    
+
     allContentData.forEach((panelData, panelIndex) => {
         if (panelData.biomarkerData && panelData.biomarkerData.length > 0) {
             panelData.biomarkerData.forEach(biomarker => {
-                const biomarkerKey = makeBiomarkerKey(biomarker.name, biomarker.loinc);
-                
+                // Use only the LOINC code as the key
+                const biomarkerKey = biomarker.loinc;
+
+                // Check if the LOINC code already exists in the map
                 if (!biomarkerToPanelsMap.has(biomarkerKey)) {
                     biomarkerToPanelsMap.set(biomarkerKey, {
                         biomarkerName: biomarker.name,
@@ -2444,12 +2479,14 @@ function buildBiomarkerToPanelsMap() {
                         panels: []
                     });
                 }
+                
+                // Push the panel data to the corresponding LOINC code entry
                 biomarkerToPanelsMap.get(biomarkerKey).panels.push({ panelIndex, panelData });
             });
         }
     });
     
-    console.log(`Built biomarker-to-panels mapping for ${biomarkerToPanelsMap.size} biomarkers`);
+    console.log(`Built biomarker-to-panels mapping for ${biomarkerToPanelsMap.size} unique LOINC codes`);
 }
 
 // Find matching biomarkers for a query
@@ -3121,11 +3158,11 @@ function filterPanelsAndBiomarkers() {
 }
 
 function renderBiomarkerAsPanel(biomarkerInfo, index) {
-    const compKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
+    const loincCode = biomarkerInfo.loincCode;
+    const compKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, loincCode); // Still needed for biomarkerUrlMap
     let additionalInfo = biomarkerUrlMap.get(compKey);
-    
-    // Get the list of panels this biomarker is in
-    const panelsInBiomarker = biomarkerToPanelsMap.get(compKey)?.panels || [];
+    // Get the list of panels this biomarker is in using the new LOINC-only key
+    const panelsInBiomarker = biomarkerToPanelsMap.get(loincCode)?.panels || [];
 
     const panelWrapper = document.createElement('div');
     panelWrapper.classList.add('panel-wrapper');
@@ -3230,7 +3267,8 @@ function filterBiomarkersOnly() {
         paragraphContainer.appendChild(resultsSummary);
 
         matchingBiomarkers.forEach((biomarkerInfo, index) => {
-            const compKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
+            // The biomarkerInfo object from Fuse.js already has the loincCode, which is now the key.
+            const compKey = biomarkerInfo.loincCode;
             const panels = biomarkerToPanelsMap.get(compKey)?.panels || [];
 
             let additionalInfo = biomarkerUrlMap.get(compKey);
