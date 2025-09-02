@@ -4,6 +4,40 @@ window.openPanelInNewTab = function(panelKeyword) {
     window.open(newUrl, '_blank');
 };
 
+// New global function to handle navigation and search for biomarkers
+window.navigateToBiomarker = function(loincCode, biomarkerName) {
+    // 1. Find the "Search Biomarkers Only" radio button and check it
+    const biomarkerRadio = document.getElementById('searchModeBiomarkers');
+    if (biomarkerRadio) {
+        biomarkerRadio.checked = true;
+    }
+
+    // 2. Set the search input with the biomarker's name instead of the LOINC code
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+        searchInput.value = biomarkerName;
+        window.searchTriggeredFromDropdown = true; 
+    }
+
+    // 3. Trigger the search using the LOINC code to ensure accuracy
+    // We will simulate the search event with a slight delay
+    // to give the browser time to update the input field and trigger the search logic correctly.
+    setTimeout(() => {
+        // Here, we can temporarily set the input value to the LOINC for the search logic
+        const originalValue = searchInput.value;
+        searchInput.value = loincCode;
+        
+        // Trigger the search
+        const searchButton = document.getElementById('searchButton');
+        if (searchButton) {
+            searchButton.click();
+        }
+        
+        // Restore the original name to the search input after the search has been initiated
+        searchInput.value = originalValue;
+    }, 100);
+};
+
 // Expand all associated panels within a biomarker container
 // Function to expand the panels list within a biomarker container
 window.expandAllPanels = function(container) {
@@ -31,6 +65,8 @@ document.addEventListener('DOMContentLoaded', function() {
    let searchTriggeredFromDropdown = false; // Flag to prevent suggestion loops
    
    let searchTimeout;
+
+   createHomepageButton();
    // Your Google Apps Script deployment URL (replace with your actual URL)
    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyzohnuS8ftTBdV5_1xYWCnuJrF6T3g8iZ3ZRkxvh7o53dA9NDJmO81K81BAPvMD8RQ/exec'; // Using Version 16 of Bioassay Getter (Attached)
 
@@ -167,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     width: 570px; 
                     min-height: 200px; 
                     transition: min-height 0.1s ease;
-                    position: relative; 
+                    position: relative;
                 }
 
                 .panel-container.panel-expanded .panel-content {
@@ -182,6 +218,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .panel-container .panel-content:not(:has(.biomarker-details-container.has-active-biomarker)) {
                     min-height: auto; /* Ensure panel-content can shrink if no active biomarker details */
                 }
+
 
                 
                 .expand-all-button {
@@ -397,7 +434,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 /* NEW STYLES FOR INVALID BIOMARKERS */
                 .biomarker-clickable.invalid-biomarker {
-                    color: #000000;
+                    color: #514f4fff;
                 }
                 
                 .biomarker-clickable.invalid-biomarker:hover {
@@ -406,20 +443,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 .biomarker-clickable.invalid-biomarker.expanded {
                     color: #000000;
-                    font-weight: bold;
-                }
-
-                /* NEW STYLES FOR GRAY BIOMARKERS */
-                .biomarker-clickable.gray-biomarker {
-                    color: #999999;
-                }
-                
-                .biomarker-clickable.gray-biomarker:hover {
-                    color: #666666;
-                }
-                
-                .biomarker-clickable.gray-biomarker.expanded {
-                    color: #999999;
                     font-weight: bold;
                 }
 
@@ -724,8 +747,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
         // Helper functions for keys
+    // Helper functions for keys
     function makeBiomarkerKey(name, loinc) {
-        return `${(name||'').trim().toLowerCase()}|${(loinc||'').trim().toLowerCase()}`;
+        return (loinc || '').trim().toLowerCase();
     }
 
     function extractLoincFromUrl(url) {
@@ -733,6 +757,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const m = url.trim().match(/loinc\.org\/([0-9\-]+)/i);
         return m ? m[1] : '';
     }
+
 
     function clearSearchHighlights(root = paragraphContainer) {
         root.querySelectorAll('mark.search-highlight').forEach(m => {
@@ -772,6 +797,7 @@ document.addEventListener('DOMContentLoaded', function() {
             node.parentNode.replaceChild(frag, node);
         });
         }
+
 
         // Apply to current UI
         function applySearchHighlights(query) {
@@ -864,40 +890,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    
+
     // Create homepage button
-    function createHomepageButton() {
-        // Check if homepage button already exists
-        let homepageButton = document.getElementById('homepage-button');
-        if (!homepageButton) {
-            homepageButton = document.createElement('div');
-            homepageButton.id = 'homepage-button';
-            homepageButton.className = 'homepage-button';
-            homepageButton.title = 'Go to Homepage';
-            
-            homepageButton.innerHTML = `
-                <img src="Homepage.png" alt="Homepage">
-            `;
-            
-            // Add click event listener
-            homepageButton.addEventListener('click', function() {
-                // Clear search input
-                searchInput.value = '';
-                // Hide suggestions
-                hideSuggestions();
-                // Show homepage
-                showHomepage();
-                // Hide all content paragraphs
-                paragraphContainer.querySelectorAll('.content-paragraph').forEach(p => p.classList.add('hide'));
-                // Clear any search results or messages
-                document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
-                    .forEach(el => el.remove());
-            });
-            
-            document.body.appendChild(homepageButton);
-        }
-        
-        return homepageButton;
+    // New version of the createHomepageButton function
+function createHomepageButton() {
+    const homeButton = document.getElementById('homeButton');
+
+    // Add the event listener to the existing button
+    if (homeButton) {
+        homeButton.addEventListener('click', function() {
+            // Your existing logic for the home button
+            searchInput.value = '';
+            hideSuggestions();
+            showHomepage();
+            paragraphContainer.querySelectorAll('.content-paragraph').forEach(p => p.classList.add('hide'));
+            document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
+                .forEach(el => el.remove());
+        });
     }
+}
         function toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer) {
             const loincForKey = (biomarkerData?.loinc || biomarkerElement?.getAttribute('data-loinc') || '').replace(/[^A-Za-z0-9-]/g,'');
             const biomarkerKey = `${panelContainer.id}-${biomarkerName.replace(/\s+/g, '-')}-${loincForKey}`;
@@ -1022,195 +1034,224 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-    function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
-        
-                const assayKey = makeBiomarkerKey(biomarkerName, biomarkerData?.loinc);
-        let biomarkerInfo = biomarkerUrlMap.get(assayKey);
-        biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, biomarkerData?.loinc);
-        
-        const detailsDiv = document.createElement('div');
-        detailsDiv.id = elementId;
-        detailsDiv.className = 'biomarker-detail-expanded';
+    // Updated createBiomarkerDetailsElement function
+function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) {
+    const assayKey = makeBiomarkerKey(biomarkerName, biomarkerData?.loinc);
+    let biomarkerInfo = biomarkerUrlMap.get(assayKey);
+    biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, biomarkerData?.loinc);
+    
+    const detailsDiv = document.createElement('div');
+    detailsDiv.id = elementId;
+    detailsDiv.className = 'biomarker-detail-expanded';
 
-        const isValid = isValidBiomarker(biomarkerName, biomarkerData?.loinc, biomarkerData?.rowIndex, biomarkerData?.biomarkerColumnIndex);
-        
-        // Check if biomarker is gray (#d9d9d9)
-        const rowColors = biomarkerColorMap.get(biomarkerData?.rowIndex?.toString());
-        const biomarkerColor = rowColors ? rowColors[biomarkerData?.biomarkerColumnIndex?.toString()] : null;
-        const isGrayBiomarker = biomarkerColor && biomarkerColor.toLowerCase() === '#d9d9d9';
-        
-        if (!isValid) {
-            detailsDiv.classList.add('invalid-biomarker');
-        } else if (isGrayBiomarker) {
-            detailsDiv.classList.add('gray-biomarker');
-        }
+    const isValid = isValidBiomarker(biomarkerName, biomarkerData?.loinc, biomarkerData?.rowIndex, biomarkerData?.biomarkerColumnIndex);
+    
+    // Check if biomarker is gray (#d9d9d9)
+    const rowColors = biomarkerColorMap.get(biomarkerData?.rowIndex?.toString());
+    const biomarkerColor = rowColors ? rowColors[biomarkerData?.biomarkerColumnIndex?.toString()] : null;
+    const isGrayBiomarker = biomarkerColor && biomarkerColor.toLowerCase() === '#d9d9d9';
+    
+    if (!isValid) {
+        detailsDiv.classList.add('invalid-biomarker');
+    } else if (isGrayBiomarker) {
+        detailsDiv.classList.add('gray-biomarker');
+    }
 
-        
+    let detailsContent = `<h4>${biomarkerName}</h4>`;
 
-        let detailsContent = `<h4>${biomarkerName}</h4>`;
+    detailsContent += `
+        <div class="detail-item">
+            <span class="detail-label">Biomarker Name:</span>
+            <span class="detail-value">${biomarkerName}</span>
+        </div>`;
 
+    // Get biomarker type from pureBiomarkerData
+    let biomarkerType = 'Unknown';
+    if (biomarkerData && biomarkerData.loinc) {
+        biomarkerType = getBiomarkerTypeFromPureData(biomarkerName, biomarkerData.loinc);
+    }
+    
+    // Override biomarker type to "Description" if biomarker is gray
+    if (isGrayBiomarker) {
+        biomarkerType = 'Description';
+    }
+    
+    detailsContent += `
+        <div class="detail-item">
+            <span class="detail-label">Biomarker Type:</span>
+            <span class="detail-value" ${!isValid ? 'style="color: #000000;"' : ''}>${biomarkerType}</span>
+        </div>`; 
+
+    if (biomarkerData && biomarkerData.loinc) {
         detailsContent += `
             <div class="detail-item">
-                <span class="detail-label">Biomarker Name:</span>
-                <span class="detail-value">${biomarkerName}</span>
+                <span class="detail-label">LOINC Code:</span>
+                <span class="detail-value">
+                    <a href="https://loinc.org/${biomarkerData.loinc}" target="_blank">${biomarkerData.loinc}</a>
+                </span>
             </div>`;
+    }
 
-        // Get biomarker type from pureBiomarkerData
-        let biomarkerType = 'Unknown';
-        if (biomarkerData && biomarkerData.loinc) {
-            biomarkerType = getBiomarkerTypeFromPureData(biomarkerName, biomarkerData.loinc);
+    const loincName = (biomarkerInfo && biomarkerInfo.description) ? biomarkerInfo.description
+        : (biomarkerData && biomarkerData.loincName ? biomarkerData.loincName : biomarkerName);
+
+    detailsContent += `
+        <div class="detail-item">
+            <span class="detail-label">LOINC Name:</span>
+            <span class="detail-value">${loincName}</span>
+        </div>`;
+
+    // Add separator line between biomarker info and assay info
+    detailsContent += `<div class="detail-separator"></div>`;
+
+    // Check if this is a calculation based on biomarker type from pureBiomarkerData
+    if (biomarkerType === 'Calculation') {
+        let associatedBiomarkers = [];
+        if (biomarkerInfo && biomarkerInfo.associatedBiomarkers && biomarkerInfo.associatedBiomarkers.length > 0) {
+            associatedBiomarkers = biomarkerInfo.associatedBiomarkers;
+        } else {
+            associatedBiomarkers = getAssociatedBiomarkersForCalculation(biomarkerName, biomarkerData.loinc);
         }
         
-        // Override biomarker type to "Description" if biomarker is gray
-        if (isGrayBiomarker) {
-            biomarkerType = 'Description';
-        }
-        
-        detailsContent += `
-            <div class="detail-item">
-                <span class="detail-label">Biomarker Type:</span>
-                <span class="detail-value" ${!isValid ? 'style="color: #000000;"' : ''}>${biomarkerType}</span>
-            </div>`; 
-
-        if (biomarkerData && biomarkerData.loinc) {
+        if (associatedBiomarkers && associatedBiomarkers.length > 0) {
+            const associatedCount = associatedBiomarkers.length;
             detailsContent += `
                 <div class="detail-item">
-                    <span class="detail-label">LOINC Code:</span>
-                    <span class="detail-value">
-                        <a href="https://loinc.org/${biomarkerData.loinc}" target="_blank">${biomarkerData.loinc}</a>
-                    </span>
-                </div>`;
-        }
-
-        const loincName = (biomarkerInfo && biomarkerInfo.description) ? biomarkerInfo.description
-            : (biomarkerData && biomarkerData.loincName ? biomarkerData.loincName : biomarkerName);
-
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">LOINC Name:</span>
-                    <span class="detail-value">${loincName}</span>
-                </div>`;
-
-        // Add separator line between biomarker info and assay info
-        detailsContent += `<div class="detail-separator"></div>`;
-
-        // Check if this is a calculation based on biomarker type from pureBiomarkerData
-        if (biomarkerType === 'Calculation') {
-            // Use existing associated biomarkers if available, otherwise get from calculationData
-            let associatedBiomarkers = [];
-            if (biomarkerInfo && biomarkerInfo.associatedBiomarkers && biomarkerInfo.associatedBiomarkers.length > 0) {
-                associatedBiomarkers = biomarkerInfo.associatedBiomarkers;
-            } else {
-                associatedBiomarkers = getAssociatedBiomarkersForCalculation(biomarkerName, biomarkerData.loinc);
-            }
+                    <span class="detail-label">Associated Biomarkers (${associatedCount}):</span>
+                    <div class="detail-value">
+                        <ul class="associated-biomarkers-list">`;
             
-            if (associatedBiomarkers && associatedBiomarkers.length > 0) {
-                const associatedCount = associatedBiomarkers.length;
+            associatedBiomarkers.forEach(associated => {
+                // Modified click handler
                 detailsContent += `
-                    <div class="detail-item">
-                        <span class="detail-label">Associated Biomarkers (${associatedCount}):</span>
-                        <div class="detail-value">
-                            <ul class="associated-biomarkers-list">`;
-                
-                associatedBiomarkers.forEach(associated => {
-                    detailsContent += `
-                                <li>
-                                    <span class="associated-biomarker-name associated-biomarker-clickable" onclick="window.openPanelInNewTab('${associated.name}')">${associated.name}</span> 
-                                    <span class="associated-biomarker-loinc">(LOINC: ${associated.loinc})</span>
-                                </li>`;
-                });
-                
-                detailsContent += `
-                            </ul>
-                        </div>
-                    </div>`;
-            }
-        } else if (biomarkerInfo && biomarkerInfo.assayType && biomarkerType === "Biochemical") {
-            // Show regular assay type for Biochemical biomarkers
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">Assay Type:</span>
-                    <span class="detail-value">${biomarkerInfo.assayType}</span>
-                </div>`;
-        }
-
-        if (biomarkerInfo && biomarkerInfo.vendor) {
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">Assay Vendor:</span>
-                    <span class="detail-value">${biomarkerInfo.vendor}</span>
-                </div>`;
-        }
-
-        if (biomarkerInfo && biomarkerInfo.catalog) {
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">Catalog Number:</span>
-                    <span class="detail-value">${biomarkerInfo.catalog}</span>
-                </div>`;
-        }
-
-        if (biomarkerInfo && biomarkerInfo.kitUrl) {
-            detailsContent += `
-                <div class="detail-item">
-                    <span class="detail-label">Kit URL:</span>
-                    <span class="detail-value"><a href="${biomarkerInfo.kitUrl}" target="_blank" class="detail-link">View Kit Details</a></span>
-                </div>`;
-        }
-
-        //  New section: List of panels using this biomarker (composite key: name + LOINC)
-        const currentLoinc = (biomarkerData?.loinc || biomarkerInfo?.loincCode || '').trim();
-        const compKey = makeBiomarkerKey(biomarkerName, currentLoinc);
-
-        // Pull the exact panels for THIS name+LOINC from the map
-        const panelsUsing = (biomarkerToPanelsMap.get(compKey)?.panels || [])
-            .map(ref => ref.panelData); // keep just the panel objects
-
-        if (panelsUsing.length > 0) {
-            const panelListId = `${elementId}-panel-list`;
-            detailsContent += `
-                <div class="panels-using-biomarker" style="margin-top: 15px;">
-                    <div class="panel-toggle-header" onclick="togglePanelList('${panelListId}', this)">
-                        <span class="panel-toggle-text">Panels Using This Biomarker (${panelsUsing.length})</span>
-                        <span class="panel-toggle-arrow">▼</span>
-                    </div>
-                    <div id="${panelListId}" style="display: none; margin-top: 10px;">
-                        <ul style="list-style: none; padding-left: 0;">
-            `;
-
-            panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers, statusIcon, tooltipText }) => {
-                detailsContent += `
-                    <li class="associated-panel-container">
-                        <div class="associated-panel-content">
-                            <div class="associated-panel-header">
-                                <span class="associated-panel-label">PANEL</span>
-                                <span class="associated-panel-title">${keyword}</span>
-                                <img 
-                                    src="open-tab.png" 
-                                    class="open-new-tab-icon" 
-                                    title="Open in new tab"
-                                    onclick="openPanelInNewTab('${encodeURIComponent(keyword)}')"
-                                />
-                            </div>
-                            <p class="associated-panel-meta">
-                                ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
-                                ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
-                                ${(biomarkers?.length || 0)} biomarkers
-                                <span class="biomarker-panel-status">${statusIcon || ''}<div class="panel-tooltip">${tooltipText || ''}</div></span>
-                            </p>
-                        </div>
+                    <li>
+                        <span class="associated-biomarker-name associated-biomarker-clickable" onclick="window.navigateToBiomarker('${associated.loinc}', '${associated.name}')">${associated.name}</span> 
+                        <span class="associated-biomarker-loinc">(LOINC: ${associated.loinc})</span>
                     </li>`;
             });
-
+            
             detailsContent += `
                         </ul>
                     </div>
                 </div>`;
         }
-
-        detailsDiv.innerHTML = detailsContent;
-        return detailsDiv;
+    } else if (biomarkerInfo && biomarkerInfo.assayType && biomarkerType === "Biochemical") {
+        detailsContent += `
+            <div class="detail-item">
+                <span class="detail-label">Assay Type:</span>
+                <span class="detail-value">${biomarkerInfo.assayType}</span>
+            </div>`;
     }
+
+    if (biomarkerInfo && biomarkerInfo.vendor) {
+        detailsContent += `
+            <div class="detail-item">
+                <span class="detail-label">Assay Vendor:</span>
+                <span class="detail-value">${biomarkerInfo.vendor}</span>
+            </div>`;
+    }
+
+    if (biomarkerInfo && biomarkerInfo.catalog) {
+        detailsContent += `
+            <div class="detail-item">
+                <span class="detail-label">Catalog Number:</span>
+                <span class="detail-value">${biomarkerInfo.catalog}</span>
+            </div>`;
+    }
+
+    if (biomarkerInfo && biomarkerInfo.kitUrl) {
+        detailsContent += `
+            <div class="detail-item">
+                <span class="detail-label">Kit URL:</span>
+                <span class="detail-value"><a href="${biomarkerInfo.kitUrl}" target="_blank" class="detail-link">View Kit Details</a></span>
+            </div>`;
+    }
+
+    const currentLoinc = (biomarkerData?.loinc || biomarkerInfo?.loincCode || '').trim();
+    const compKey = makeBiomarkerKey(biomarkerName, currentLoinc);
+    const panelsUsing = (biomarkerToPanelsMap.get(compKey)?.panels || [])
+        .map(ref => ref.panelData);
+
+    if (panelsUsing.length > 0) {
+        const panelListId = `${elementId}-panel-list`;
+        detailsContent += `
+            <div class="panels-using-biomarker" style="margin-top: 15px;">
+                <div class="panel-toggle-header" onclick="togglePanelList('${panelListId}', this)">
+                    <span class="panel-toggle-text">Panels Using This Biomarker (${panelsUsing.length})</span>
+                    <span class="panel-toggle-arrow">▼</span>
+                </div>
+                <div id="${panelListId}" style="display: none; margin-top: 10px;">
+                    <ul style="list-style: none; padding-left: 0;">
+        `;
+
+        panelsUsing.forEach(({ keyword, cpt, testNumber, biomarkers, statusIcon, tooltipText }) => {
+            detailsContent += `
+                <li class="associated-panel-container">
+                    <div class="associated-panel-content">
+                        <div class="associated-panel-header">
+                            <span class="associated-panel-label">PANEL</span>
+                            <span class="associated-panel-title">${keyword}</span>
+                            <img 
+                                src="open-tab.png" 
+                                class="open-new-tab-icon" 
+                                title="Open in new tab"
+                                onclick="window.openPanelInNewTab('${encodeURIComponent(keyword)}')"
+                            />
+                        </div>
+                        <p class="associated-panel-meta">
+                            ${cpt ? `CPT: ${cpt}` : 'CPT: Not Found'} | 
+                            ${testNumber ? `Test #: ${testNumber}` : 'Test #: Not Found'} | 
+                            ${(biomarkers?.length || 0)} biomarkers
+                            <span class="biomarker-panel-status">${statusIcon || ''}<div class="panel-tooltip">${tooltipText || ''}</div></span>
+                        </p>
+                    </div>
+                </li>`;
+        });
+
+        detailsContent += `
+                    </ul>
+                </div>
+            </div>`;
+    }
+
+    detailsDiv.innerHTML = detailsContent;
+    return detailsDiv;
+}
+        // Ensure biomarker details container doesn't overflow past the panel bottom.
+    function adjustBiomarkerDetailsMaxHeight(panelContainer) {
+        if (!panelContainer) return;
+        const detailsContainer = panelContainer.querySelector('.biomarker-details-container');
+        if (!detailsContainer) return;
+
+        // Make it scroll if needed
+        detailsContainer.style.overflowY = 'auto';
+
+        try {
+            const panelRect = panelContainer.getBoundingClientRect();
+            const detailsRect = detailsContainer.getBoundingClientRect();
+
+            // top offset of detailsContainer relative to panel top
+            const topOffset = Math.max(0, detailsRect.top - panelRect.top);
+
+            // account for panel's vertical padding
+            const cs = window.getComputedStyle(panelContainer);
+            const paddingBottom = parseFloat(cs.paddingBottom) || 0;
+
+            // compute available height within the panel for the details container
+            let maxH = panelContainer.clientHeight - topOffset - paddingBottom - 8; // small safety margin
+
+            // If result is nonsensical (panel auto-sized), fallback to a large value
+            if (!isFinite(maxH) || maxH < 100) {
+                maxH = 1000;
+            }
+
+            detailsContainer.style.maxHeight = Math.max(80, Math.floor(maxH)) + 'px';
+        } catch (e) {
+            // Fallback: don't crash if DOM measurement fails
+            detailsContainer.style.maxHeight = '1000px';
+        }
+    }
+
 
         // Ensure biomarker details container doesn't overflow past the panel bottom.
     function adjustBiomarkerDetailsMaxHeight(panelContainer) {
@@ -2311,11 +2352,11 @@ document.addEventListener('DOMContentLoaded', function() {
         const biomarkerNamesArray = Array.from(biomarkerToPanelsMap.values()).map(b => ({
             biomarkerName: b.biomarkerName,
             loincCode: b.loincCode || '',
-            originalKey: makeBiomarkerKey(b.biomarkerName, b.loincCode) // <-- composite key
+            originalKey: b.loincCode // <-- Use only the LOINC code as the key
         }));
 
         const biomarkerOptions = {
-            keys: ['biomarkerName', 'loincCode'], // allow matching on LOINC too
+            keys: ['biomarkerName', 'loincCode'],
             threshold: 0.1,
             includeScore: true
         };
@@ -2431,12 +2472,14 @@ let biomarkerToPanelsMap = new Map();
 // Build biomarker-to-panels mapping from existing data
 function buildBiomarkerToPanelsMap() {
     biomarkerToPanelsMap.clear();
-    
+
     allContentData.forEach((panelData, panelIndex) => {
         if (panelData.biomarkerData && panelData.biomarkerData.length > 0) {
             panelData.biomarkerData.forEach(biomarker => {
-                const biomarkerKey = makeBiomarkerKey(biomarker.name, biomarker.loinc);
-                
+                // Use only the LOINC code as the key
+                const biomarkerKey = biomarker.loinc;
+
+                // Check if the LOINC code already exists in the map
                 if (!biomarkerToPanelsMap.has(biomarkerKey)) {
                     biomarkerToPanelsMap.set(biomarkerKey, {
                         biomarkerName: biomarker.name,
@@ -2444,12 +2487,14 @@ function buildBiomarkerToPanelsMap() {
                         panels: []
                     });
                 }
+                
+                // Push the panel data to the corresponding LOINC code entry
                 biomarkerToPanelsMap.get(biomarkerKey).panels.push({ panelIndex, panelData });
             });
         }
     });
     
-    console.log(`Built biomarker-to-panels mapping for ${biomarkerToPanelsMap.size} biomarkers`);
+    console.log(`Built biomarker-to-panels mapping for ${biomarkerToPanelsMap.size} unique LOINC codes`);
 }
 
 // Find matching biomarkers for a query
@@ -3121,11 +3166,11 @@ function filterPanelsAndBiomarkers() {
 }
 
 function renderBiomarkerAsPanel(biomarkerInfo, index) {
-    const compKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
+    const loincCode = biomarkerInfo.loincCode;
+    const compKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, loincCode); // Still needed for biomarkerUrlMap
     let additionalInfo = biomarkerUrlMap.get(compKey);
-    
-    // Get the list of panels this biomarker is in
-    const panelsInBiomarker = biomarkerToPanelsMap.get(compKey)?.panels || [];
+    // Get the list of panels this biomarker is in using the new LOINC-only key
+    const panelsInBiomarker = biomarkerToPanelsMap.get(loincCode)?.panels || [];
 
     const panelWrapper = document.createElement('div');
     panelWrapper.classList.add('panel-wrapper');
@@ -3230,7 +3275,8 @@ function filterBiomarkersOnly() {
         paragraphContainer.appendChild(resultsSummary);
 
         matchingBiomarkers.forEach((biomarkerInfo, index) => {
-            const compKey = makeBiomarkerKey(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
+            // The biomarkerInfo object from Fuse.js already has the loincCode, which is now the key.
+            const compKey = biomarkerInfo.loincCode;
             const panels = biomarkerToPanelsMap.get(compKey)?.panels || [];
 
             let additionalInfo = biomarkerUrlMap.get(compKey);
