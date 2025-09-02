@@ -800,19 +800,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
         // Apply to current UI
-        function applySearchHighlights(query) {
+        /* (Your existing code) */
+
+    function applySearchHighlights(query) {
         if (!query) return;
 
-        // panel titles (e.g., "PANEL  Metabolic Panel…")
-        paragraphContainer.querySelectorAll('.panel-container .panel-content h3')
-            .forEach(h3 => highlightMatchesInElement(h3, query));
+        // A list of all the selectors we need to highlight
+        const selectorsToHighlight = [
+            '.panel-container .panel-content h3',
+            '.biomarker-clickable',
+            '.biomarker-item-in-panel',
+            '.associated-biomarker-clickable',
+            '.result-title',
+            // New selectors for the biomarker search results
+            '.biomarker-search-result h3', // The main title of the biomarker result
+            '.biomarker-search-result p:nth-of-type(2)' // The paragraph containing the LOINC Name
+        ];
 
-        // biomarker chips/names that are rendered
-        paragraphContainer.querySelectorAll(
-            '.biomarker-clickable, .biomarker-item-in-panel, .associated-biomarker-clickable, .result-title'
-        ).forEach(el => highlightMatchesInElement(el, query));
+        selectorsToHighlight.forEach(selector => {
+            paragraphContainer.querySelectorAll(selector).forEach(el => {
+                highlightMatchesInElement(el, query);
+            });
+        });
     }
-
     // Helper function to check if biomarker is valid
     function isValidBiomarker(biomarkerName, loincCode, rowIndex, biomarkerColumnIndex) {
         // Check if we have the necessary parameters for color validation
@@ -2337,6 +2347,12 @@ function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) 
 
    }
 
+   function highlightSearchTerm(text, query) {
+        if (!text || !query) return text;
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    }
+
    // ADD this entire function:
     function initializeFuse() {
         // For panels: search by keyword (panel name)
@@ -2352,11 +2368,12 @@ function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) 
         const biomarkerNamesArray = Array.from(biomarkerToPanelsMap.values()).map(b => ({
             biomarkerName: b.biomarkerName,
             loincCode: b.loincCode || '',
-            originalKey: b.loincCode // <-- Use only the LOINC code as the key
+            description: biomarkerUrlMap.get(b.loincCode)?.description || '', // Add description
+            originalKey: b.loincCode
         }));
 
         const biomarkerOptions = {
-            keys: ['biomarkerName', 'loincCode'],
+            keys: ['biomarkerName', 'loincCode', 'description'], // Add 'description' here
             threshold: 0.1,
             includeScore: true
         };
@@ -3241,7 +3258,6 @@ function filterBiomarkersOnly() {
     const query = searchInput.value.trim();
     const lowerQuery = query.toLowerCase();
 
-    // Clear all previous results and messages.
     document.querySelectorAll('.panel-container, #search-results-summary, #noResultsMessage, .suggestion-message, .biomarker-result-container')
         .forEach(el => el.remove());
     hideHomepage();
@@ -3265,8 +3281,19 @@ function filterBiomarkersOnly() {
         threshold: searchThreshold,
         includeScore: true
     });
+    
+    // De-duplication logic
+    const uniqueBiomarkers = new Map();
+    biomarkerResults.forEach(result => {
+        const biomarkerItem = result.item;
+        const loincCode = biomarkerItem.loincCode;
 
-    const matchingBiomarkers = biomarkerResults.map(result => result.item);
+        if (!uniqueBiomarkers.has(loincCode)) {
+            uniqueBiomarkers.set(loincCode, biomarkerItem);
+        }
+    });
+
+    const matchingBiomarkers = Array.from(uniqueBiomarkers.values());
 
     if (matchingBiomarkers.length > 0) {
         const resultsSummary = document.createElement('div');
@@ -3275,41 +3302,40 @@ function filterBiomarkersOnly() {
         paragraphContainer.appendChild(resultsSummary);
 
         matchingBiomarkers.forEach((biomarkerInfo, index) => {
-            // The biomarkerInfo object from Fuse.js already has the loincCode, which is now the key.
             const compKey = biomarkerInfo.loincCode;
             const panels = biomarkerToPanelsMap.get(compKey)?.panels || [];
 
             let additionalInfo = biomarkerUrlMap.get(compKey);
             additionalInfo = verifyCalculationAssayType(additionalInfo, biomarkerInfo.loincCode);
             
-            // Get biomarker type
             let biomarkerType = getBiomarkerTypeFromPureData(biomarkerInfo.biomarkerName, biomarkerInfo.loincCode);
             const isGrayBiomarker = biomarkerColorMap.get(biomarkerInfo.rowIndex?.toString())?.[biomarkerInfo.biomarkerColumnIndex?.toString()]?.toLowerCase() === '#d9d9d9';
             if (isGrayBiomarker) {
                 biomarkerType = 'Description';
             }
 
-            // Create the outer wrapper and panel container
             const panelWrapper = document.createElement('div');
             panelWrapper.classList.add('panel-wrapper');
             const panelContainer = document.createElement('div');
             
-            // Use the base panel classes for consistent styling
             panelContainer.classList.add('panel-container', 'content-paragraph', 'biomarker-search-result');
-            panelContainer.id = `biomarker-panel-${index}`; // Assign a unique ID
+            panelContainer.id = `biomarker-panel-${index}`;
             panelWrapper.appendChild(panelContainer);
 
-            // Left side: panel-content
             const panelContent = document.createElement('div');
             panelContent.classList.add('panel-content');
             
+            // Highlight the LOINC Name here
+            const loincNameText = additionalInfo?.description || 'N/A';
+            const highlightedLoincName = highlightSearchTerm(loincNameText, query);
+
             let panelContentHtml = `
                 <div class="panel-header" onclick="this.closest('.panel-container').classList.toggle('panel-expanded')">
                     <span class="panel-label biomarker-label-panel">BIOMARKER</span>
                     <h3 class="panel-title">${biomarkerInfo.biomarkerName}</h3>
                 </div>
                 <p><strong>LOINC Code:</strong> <a href="https://loinc.org/${biomarkerInfo.loincCode}" target="_blank">${biomarkerInfo.loincCode}</a></p>
-                <p><strong>LOINC Name:</strong> ${additionalInfo?.description || 'N/A'}</p>
+                <p><strong>LOINC Name:</strong> ${highlightedLoincName}</p>
                 <p><strong>Biomarker Type:</strong> ${biomarkerType || 'N/A'}</p>
                 <p><strong>Assay Type:</strong> ${additionalInfo?.assayType || 'N/A'}</p>
                 <p><strong>Assay Vendor:</strong> ${additionalInfo?.vendor || 'N/A'}</p>
@@ -3324,14 +3350,13 @@ function filterBiomarkersOnly() {
             panelContent.innerHTML = panelContentHtml;
             panelContainer.appendChild(panelContent);
 
-            // Right side: biomarker-details-container (the expandable section)
             const detailsContainer = document.createElement('div');
             detailsContainer.classList.add('biomarker-details-container');
-            let detailsHtml = ''; // Remove the 'Associated Panels' title from here
+            let detailsHtml = '';
 
             if (panels.length > 0) {
                 const uniquePanels = new Set();
-                detailsHtml += '<ul class="associated-panels-biomarker-list">';
+                detailsHtml += '<h4>Associated Panels</h4><ul class="associated-panels-biomarker-list">';
                 panels.forEach(panelRef => {
                     const panelData = panelRef.panelData;
                     if (!uniquePanels.has(panelData.keyword)) {
@@ -3354,12 +3379,11 @@ function filterBiomarkersOnly() {
                                 </div>
                             </li>
                         `;
-
                     }
                 });
                 detailsHtml += '</ul>';
             } else {
-                detailsHtml += '<p>No associated panels found.</p>';
+                detailsContainer.innerHTML = '<h4>Associated Panels</h4><p>No associated panels found.</p>';
             }
 
             detailsContainer.innerHTML = detailsHtml;
@@ -3374,9 +3398,10 @@ function filterBiomarkersOnly() {
         paragraphContainer.appendChild(noResultsDiv);
     }
     clearSearchHighlights();
+    // Re-apply highlights to the main result containers, including the new LOINC name field
     applySearchHighlights(query);
-
 }
+
 
 
 // Make functions globally available
