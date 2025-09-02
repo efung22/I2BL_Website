@@ -48,11 +48,13 @@ body {
     width: 300px;
     border: 1px solid #eee;
     border-radius: 5px;
+    
 }
 
 #contentList li {
     padding: 10px;
     border-bottom: 1px solid #eee;
+    
 }
 
 #contentList li:last-child {
@@ -73,6 +75,7 @@ body {
     background-color: #f9f9f9;
     width: 600px; /* Adjust as needed */
     max-width: 90%;
+    
 }
 
 .content-paragraph.hide {
@@ -157,5 +160,26 @@ body {
     font-weight: bold;
     color: #28a745;
     margin-right: 10px;
+}
+
+#searchButton,
+#homeButton {
+    padding: 10px 15px;
+    background-color: #3570b0;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+#searchButton:hover,
+#homeButton:hover {
+    background-color: #5497de;
+}
+
+/* Add some spacing between the buttons */
+.search-container button {
+  margin-left: 10px;
 }
 
