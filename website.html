@@ -4,11 +4,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>I2BL</title>
+    <title>I2BL Panel to Biomarker</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>I2BL</title>
+    <title>I2BL Panel to Biomarker</title>
     <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdn.jsdelivr.net/npm/fuse.js/dist/fuse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
@@ -80,25 +81,25 @@
 
     <h1 class="main-heading">I<sup>2</sup>BL Panel to Biomarker</h1>
 
-    <!-- Toggle Section -->
-    <div class="toggle-group">
-    <label>
+    <!-- Segmented Control Option -->
+    <div class="segmented-control">
         <input type="radio" name="searchMode" id="searchModePanels" value="panels" checked>
-        Search Panels
-    </label>
-    <label>
+        <label for="searchModePanels">Search Panels</label>
+    
         <input type="radio" name="searchMode" id="searchModeBiomarkers" value="biomarkers">
-        Search Biomarkers Only
-    </label>
+        <label for="searchModeBiomarkers">Search Biomarkers</label>
     </div>
 
 
     <!-- Search Bar -->
     <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Search panel name or biomarker..." />
-        <button id="searchButton">Search</button>
-        <button id="homeButton">Home</button>
-        <div id="suggestionsDropdown" class="suggestions-dropdown"></div>
+        <div class="search-input-group">
+            <input type="text" id="searchInput" placeholder="Search panel name or biomarker..." />
+            <button id="searchButton" aria-label="Search">
+                <i class="fas fa-search"></i>
+            </button>
+        </div>
+        <button id="homeButton">Home</button> <div id="suggestionsDropdown" class="suggestions-dropdown"></div>
     </div>
 
     <!-- Content Container -->

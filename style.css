@@ -105,17 +105,17 @@ body {
 
 
 .suggestions-dropdown {
-    position: absolute; /* Position relative to .search-container */
-    width: 300px; /* Match the width of your searchInput */
+    position: absolute;
+    width: 300px;
     background-color: #fff;
     border: 1px solid #ccc;
-    border-top: none; /* No top border as it sits right below the input */
+    border-top: none; 
     border-radius: 0 0 5px 5px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    max-height: 200px; /* Limit height and add scrollbar if many suggestions */
+    max-height: 200px; 
     overflow-y: auto;
-    z-index: 100; /* Ensure it's above other content */
-    display: none; /* Hidden by default */
+    z-index: 100; 
+    display: none; 
 }
 
 .suggestion-item {
@@ -123,15 +123,13 @@ body {
     cursor: pointer;
     font-size: 16px;
     color: #333;
-    text-align: left; /* Align text to the left within the dropdown */
+    text-align: left; 
 }
 
 .suggestion-item:hover {
     background-color: #f0f0f0;
 }
 
-
-/* Style for the nested panel list within a biomarker panel */
 .associated-panels-biomarker-list {
     margin: 0;
     padding-left: 0;
@@ -139,11 +137,9 @@ body {
 }
 
 .panel-container.biomarker-search-result {
-    background-color: #c8f2ff; /* A light blue color */
+    background-color: #c8f2ff;
     border: 2px solid #4a90e2;
 }
-
-
 
 .associated-panels-biomarker-list li {
     margin-bottom: 10px;
@@ -154,32 +150,88 @@ body {
     transition: background-color 0.2s;
 }
 
-
-
 .associated-panel-title {
     font-weight: bold;
     color: #28a745;
     margin-right: 10px;
 }
 
-#searchButton,
+.segmented-control {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    border: 1px solid #3570b0;
+    border-radius: 8px; 
+    overflow: hidden; 
+    width: fit-content; 
+    margin-left: auto; 
+    margin-right: auto;
+}
+
+.segmented-control input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.segmented-control label {
+    padding: 8px 20px;
+    cursor: pointer;
+    user-select: none;
+    background-color: #ffffff; 
+    color: #3570b0; 
+    transition: background-color 0.2s ease-in-out;
+    font-family: "Roboto", sans-serif; 
+}
+
+
+.segmented-control label:not(:last-of-type) {
+    border-right: 1px solid #3570b0;
+}
+
+.segmented-control input[type="radio"]:not(:checked) + label:hover {
+    background-color: #e9f5ff; 
+}
+
+.segmented-control input[type="radio"]:checked + label {
+    background-color: #3570b0; 
+    color: #ffffff; 
+}
+
+.search-input-group {
+    display: flex;
+    justify-content: center;
+}
+
 #homeButton {
-    padding: 10px 15px;
-    background-color: #3570b0;
+    position: absolute; 
+    top: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    font-size: 16px;
+    background-color: #6c757d;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 16px;
+    transition: background-color 0.2s ease;
 }
 
-#searchButton:hover,
 #homeButton:hover {
-    background-color: #5497de;
+    background-color: #5a6268;
 }
 
-/* Add some spacing between the buttons */
-.search-container button {
-  margin-left: 10px;
+#searchButton {
+    padding: 8px 8px;
+    background-color: #3570b0;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
 }
-
