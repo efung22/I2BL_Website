@@ -628,12 +628,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 .homepage-title {
                     font-size: 24px; /* Smaller than main title */
-                    font-weight: bold;
                     color: #000000;
                     margin-bottom: 15px;
                     margin-top: -10px; /* Move closer to search bar */
                     text-shadow: none;
-                    font-family: "Times New Roman", Times, serif;
+                    font-family: "Lora", Arial, serif;
                 }
 
                 .homepage-images-grid {
