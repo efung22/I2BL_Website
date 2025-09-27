@@ -39,7 +39,6 @@ window.navigateToBiomarker = function(loincCode, biomarkerName) {
 };
 
 // Expand all associated panels within a biomarker container
-// Function to expand the panels list within a biomarker container
 window.expandAllPanels = function(container) {
     container.classList.add('panel-expanded');
 };
@@ -67,7 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
    let searchTimeout;
 
    createHomepageButton();
-   // Your Google Apps Script deployment URL (replace with your actual URL)
+
    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyzohnuS8ftTBdV5_1xYWCnuJrF6T3g8iZ3ZRkxvh7o53dA9NDJmO81K81BAPvMD8RQ/exec'; // Using Version 16 of Bioassay Getter (Attached)
 
    // Cache configuration
@@ -263,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     max-width: 0; 
                     overflow: hidden;
                     opacity: 0; 
-                    transition: max-width 0.3s ease-out, opacity 0.3s ease-out, max-height 0.3s ease-out;
+                    transition: max-width 0.2s ease, opacity 0.2s ease;
                     max-height: 0; 
                     overflow-y: hidden;
                     padding-bottom: 0; 
@@ -797,10 +796,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         }
 
-
-        // Apply to current UI
-        /* (Your existing code) */
-
     function applySearchHighlights(query) {
         if (!query) return;
 
@@ -811,7 +806,6 @@ document.addEventListener('DOMContentLoaded', function() {
             '.biomarker-item-in-panel',
             '.associated-biomarker-clickable',
             '.result-title',
-            // New selectors for the biomarker search results
             '.biomarker-search-result h3', // The main title of the biomarker result
             '.biomarker-search-result p:nth-of-type(2)' // The paragraph containing the LOINC Name
         ];
@@ -898,8 +892,6 @@ document.addEventListener('DOMContentLoaded', function() {
             homepageContainer.style.display = 'none';
         }
     }
-
-    
 
     // Create homepage button
     // New version of the createHomepageButton function
@@ -2426,10 +2418,24 @@ function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) 
     function showSuggestions(suggestions) {
         suggestionsDropdown.innerHTML = ''; // Clear previous suggestions
         if (suggestions.length > 0) {
+            const currentQuery = searchInput.value.trim().toLowerCase();
             suggestions.forEach(suggestion => {
                 const suggestionItem = document.createElement('div');
                 suggestionItem.classList.add('suggestion-item');
-                suggestionItem.textContent = suggestion;
+                
+                const suggestionLower = suggestion.toLowerCase();
+                const matchIndex = suggestionLower.indexOf(currentQuery);
+                
+                if (matchIndex !== -1 && currentQuery.length > 0) {
+                    const beforeMatch = suggestion.substring(0, matchIndex);
+                    const matchedPart = suggestion.substring(matchIndex, matchIndex + currentQuery.length);
+                    const afterMatch = suggestion.substring(matchIndex + currentQuery.length);
+                    
+                    suggestionItem.innerHTML = beforeMatch + matchedPart + '<strong>' + afterMatch + '</strong>';
+                } else {
+                    suggestionItem.textContent = suggestion;
+                }
+
                 suggestionItem.addEventListener('click', () => {
                     searchInput.value = suggestion; // Fill input with clicked suggestion
                     searchTriggeredFromDropdown = true; // Set flag
