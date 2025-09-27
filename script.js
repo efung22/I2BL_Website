@@ -744,8 +744,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.head.insertAdjacentHTML('beforeend', expandableStyles);
     }
 
-        // Helper functions for keys
-    // Helper functions for keys
     function makeBiomarkerKey(name, loinc) {
         return (loinc || '').trim().toLowerCase();
     }
@@ -893,8 +891,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Create homepage button
-    // New version of the createHomepageButton function
 function createHomepageButton() {
     const homeButton = document.getElementById('homeButton');
 
@@ -1319,7 +1315,7 @@ function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) 
             // Create the details if they don't exist
             toggleBiomarkerDetails(biomarkerElement, biomarkerName, biomarkerData, panelContainer);
             anyExpanded = true;
-        } else if (!detailsContainer.classList.contains('show')) {
+        } else if (!detailsContainer.classList.contains('visible')) {
             // Show if hidden
             detailsContainer.style.display = 'block';
             requestAnimationFrame(() => detailsContainer.classList.add('visible'));
@@ -1417,7 +1413,6 @@ function createBiomarkerDetailsElement(biomarkerName, biomarkerData, elementId) 
         }
 
     }
-
 
 
    // Cache management functions
@@ -3079,10 +3074,6 @@ function addBiomarkerSearchStyles() {
                 margin-left: 5px;
             }
             
-            /* Enhanced panel styling consolidated with main .panel-container definition */
-            
-            /* .panel-container .panel-content h3 styles consolidated with earlier definition */
-            
             .panel-container .panel-content h3:before {
                 content: none !important;
                 display: none !important;
@@ -3234,7 +3225,7 @@ function renderBiomarkerAsPanel(biomarkerInfo, index) {
     // This is the key change: create the content inside the details container
     // for the associated panels, with toggle functionality for each panel
     if (panelsInBiomarker.length > 0) {
-        let detailsHtml = '<h4>Associated Panels</h4><ul class="associated-panels-biomarker-list">';
+        // let detailsHtml = '<h4>Associated Panels</h4><ul class="associated-panels-biomarker-list">';
         panelsInBiomarker.forEach(panelRef => {
             const panelData = panelRef.panelData;
             detailsHtml += `
@@ -3361,7 +3352,7 @@ function filterBiomarkersOnly() {
 
             if (panels.length > 0) {
                 const uniquePanels = new Set();
-                detailsHtml += '<h4>Associated Panels</h4><ul class="associated-panels-biomarker-list">';
+                // detailsHtml += '<h4>Associated Panels</h4><ul class="associated-panels-biomarker-list">';
                 panels.forEach(panelRef => {
                     const panelData = panelRef.panelData;
                     if (!uniquePanels.has(panelData.keyword)) {
@@ -3459,7 +3450,7 @@ function initializeBiomarkerSearch() {
 
     // 4. Handle search mode routing
     if (searchMode === 'panels') {
-        filterContentWithBiomarkersEnhanced(lowerQuery);
+            filterContentWithBiomarkersEnhanced(lowerQuery);
     } else if (searchMode === 'biomarkers') {
         filterBiomarkersOnly();
     }
@@ -3490,49 +3481,48 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
     const searchThreshold = searchTriggeredFromDropdown ? 0.2 : 0.1;
 
     // Search for panels directly
-    const searchFusePanels = new Fuse(allContentData, {
-        keys: ['keyword', 'cpt', 'testNumber'],
-        threshold: searchThreshold,
-        includeScore: true,
-        ignoreLocation: true,
-        findAllMatches: true
-    });
-    const panelResults = searchFusePanels.search(lowerQuery);
-
-    // Search for matching biomarkers
-    // const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => {
-    //     const compKey = makeBiomarkerKey(b.biomarkerName, b.loincCode); // composite
-    //     let biomarkerInfo = biomarkerUrlMap.get(compKey);
-    //     biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, b.loincCode);
-    //     return {
-    //         biomarkerName: b.biomarkerName,
-    //         originalKey: compKey, // <-- composite
-    //         loincCode: b.loincCode,
-    //         description: biomarkerInfo?.description || '',
-    //         assayType: biomarkerInfo?.assayType || ''
-    //     };
-    // });
-    // const searchFuseBiomarkers = new Fuse(biomarkerNamesArrayForSearch, {
-    //     keys: ['biomarkerName', 'loincCode', 'description', 'assayType'],
-    //     threshold: searchThreshold,
-    //     includeScore: true,
-    //     ignoreLocation: true,
-    //     findAllMatches: true
-    // });
-    // const biomarkerResults = searchFuseBiomarkers.search(lowerQuery);
-    
-    // Collect all panels that contain matching keywords or biomarkers
+    // ----------------------------
+    // Panels search: first require the query to appear in the panel *name*
+    // (case-insensitive substring). If no direct substring matches, fall
+    // back to the fuzzy Fuse results.
+    // ----------------------------
     const displayedPanelKeywords = new Set();
-    panelResults.forEach(result => {
-        const keyword = result.item.keyword;
-        if (!displayedPanelKeywords.has(keyword)) {
-            const panelElement = document.querySelector(`[data-keyword="${keyword}"]`);
-            if (panelElement) {
-                foundDirectMatches.push({ type: 'panel', element: panelElement, data: result.item });
-                displayedPanelKeywords.add(keyword);
+    const panelElements = Array.from(paragraphContainer.querySelectorAll('.content-paragraph'));
+
+    // 1) Strict substring matches on the panel name (guaranteed to contain the query)
+    allContentData.forEach(item => {
+        if (item.keyword && item.keyword.toLowerCase().includes(lowerQuery)) {
+            // find corresponding DOM element robustly by comparing the attribute (avoids CSS escaping issues)
+            const panelElement = panelElements.find(el => el.getAttribute('data-keyword') === item.keyword);
+            if (panelElement && !displayedPanelKeywords.has(item.keyword)) {
+                foundDirectMatches.push({ type: 'panel', element: panelElement, data: item });
+                displayedPanelKeywords.add(item.keyword);
             }
         }
     });
+
+    // 2) If there were no direct substring matches, fall back to fuzzy Fuse results
+    if (foundDirectMatches.length === 0) {
+        const searchFusePanels = new Fuse(allContentData, {
+            keys: ['keyword', 'cpt', 'testNumber'],
+            threshold: searchThreshold,
+            includeScore: true,
+            ignoreLocation: true,
+            findAllMatches: true
+        });
+        const panelResults = searchFusePanels.search(lowerQuery);
+        panelResults.forEach(result => {
+            const keyword = result.item.keyword;
+            if (!displayedPanelKeywords.has(keyword)) {
+                const panelElement = panelElements.find(el => el.getAttribute('data-keyword') === keyword);
+                if (panelElement) {
+                    foundDirectMatches.push({ type: 'panel', element: panelElement, data: result.item });
+                    displayedPanelKeywords.add(keyword);
+                }
+            }
+        });
+    }
+
 
     // biomarkerResults.forEach(result => {
     //     const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
@@ -3767,16 +3757,31 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
             const lowerQuery = query.toLowerCase(); // Consistent use of lowerQuery
 
             // Also clear any biomarker expansions/bold from a previous search
-            document.querySelectorAll('.biomarker-clickable.expanded').forEach(el => el.classList.remove('expanded'));
-            document.querySelectorAll('.biomarker-detail-expanded.show').forEach(el => el.classList.remove('show'));
-            // Remove any eye icons left behind so the view fully resets
-            document.querySelectorAll('.biomarker-eye').forEach(img => img.remove());
+            // Collapse biomarker details / associated panels so transitions, display toggles,
+            // eye-removal and height recalcs all happen correctly.
+            document.querySelectorAll('.panel-container').forEach(panelContainer => {
+                // Collapse standard biomarker details
+                collapseAllBiomarkers(panelContainer);
 
+                // Hide any associated-panel detail panes used in "Search Biomarkers" mode
+                panelContainer.querySelectorAll('.associated-panel-details, .biomarker-expanded-content, .panel-expanded-content, .panel-in-biomarker-view .panel-expanded-content').forEach(el => {
+                    try {
+                        el.style.display = 'none';
+                        el.removeAttribute('data-lazy'); // if we used lazy-population markers
+                    } catch (e) { /* ignore */ }
+                });
 
-            const expandedPanels = document.querySelectorAll('.panel-container.panel-expanded');
-            expandedPanels.forEach(panel => {
-                panel.classList.remove('panel-expanded');
+                // Ensure the right-column expanded state is cleared
+                panelContainer.classList.remove('panel-expanded');
+
+                // Reset any clickable background highlights
+                panelContainer.querySelectorAll('.panel-name-clickable, .associated-panel-content, .panel-in-biomarker-view .panel-name-clickable').forEach(el => {
+                    try { el.style.backgroundColor = ''; } catch(e) {}
+                });
             });
+
+            // Remove any orphaned eye icons (extra safety)
+            document.querySelectorAll('.biomarker-eye').forEach(img => img.remove());
 
 
             if (searchTimeout) {
