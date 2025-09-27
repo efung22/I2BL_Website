@@ -3468,7 +3468,6 @@ function initializeBiomarkerSearch() {
 };
 
 // Enhanced function to search both panels and biomarkers using Fuse.js
-// Enhanced function to search both panels and biomarkers using Fuse.js
 function filterContentWithBiomarkersEnhanced(lowerQuery) {
     document.querySelectorAll('.biomarker-result-container, #search-results-summary, #noResultsMessage, .suggestion-message')
         .forEach(el => el.remove());
@@ -3501,26 +3500,26 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
     const panelResults = searchFusePanels.search(lowerQuery);
 
     // Search for matching biomarkers
-    const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => {
-        const compKey = makeBiomarkerKey(b.biomarkerName, b.loincCode); // composite
-        let biomarkerInfo = biomarkerUrlMap.get(compKey);
-        biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, b.loincCode);
-        return {
-            biomarkerName: b.biomarkerName,
-            originalKey: compKey, // <-- composite
-            loincCode: b.loincCode,
-            description: biomarkerInfo?.description || '',
-            assayType: biomarkerInfo?.assayType || ''
-        };
-    });
-    const searchFuseBiomarkers = new Fuse(biomarkerNamesArrayForSearch, {
-        keys: ['biomarkerName', 'loincCode', 'description', 'assayType'],
-        threshold: searchThreshold,
-        includeScore: true,
-        ignoreLocation: true,
-        findAllMatches: true
-    });
-    const biomarkerResults = searchFuseBiomarkers.search(lowerQuery);
+    // const biomarkerNamesArrayForSearch = Array.from(biomarkerToPanelsMap.values()).map(b => {
+    //     const compKey = makeBiomarkerKey(b.biomarkerName, b.loincCode); // composite
+    //     let biomarkerInfo = biomarkerUrlMap.get(compKey);
+    //     biomarkerInfo = verifyCalculationAssayType(biomarkerInfo, b.loincCode);
+    //     return {
+    //         biomarkerName: b.biomarkerName,
+    //         originalKey: compKey, // <-- composite
+    //         loincCode: b.loincCode,
+    //         description: biomarkerInfo?.description || '',
+    //         assayType: biomarkerInfo?.assayType || ''
+    //     };
+    // });
+    // const searchFuseBiomarkers = new Fuse(biomarkerNamesArrayForSearch, {
+    //     keys: ['biomarkerName', 'loincCode', 'description', 'assayType'],
+    //     threshold: searchThreshold,
+    //     includeScore: true,
+    //     ignoreLocation: true,
+    //     findAllMatches: true
+    // });
+    // const biomarkerResults = searchFuseBiomarkers.search(lowerQuery);
     
     // Collect all panels that contain matching keywords or biomarkers
     const displayedPanelKeywords = new Set();
@@ -3535,21 +3534,21 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
         }
     });
 
-    biomarkerResults.forEach(result => {
-        const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
-        if (biomarkerInfo) {
-            biomarkerInfo.panels.forEach(panelRef => {
-                const keyword = panelRef.panelData.keyword;
-                if (!displayedPanelKeywords.has(keyword)) {
-                    const panelElement = document.querySelector(`[data-keyword="${keyword}"]`);
-                    if (panelElement) {
-                        foundDirectMatches.push({ type: 'panel', element: panelElement, data: panelRef.panelData });
-                        displayedPanelKeywords.add(keyword);
-                    }
-                }
-            });
-        }
-    });
+    // biomarkerResults.forEach(result => {
+    //     const biomarkerInfo = biomarkerToPanelsMap.get(result.item.originalKey);
+    //     if (biomarkerInfo) {
+    //         biomarkerInfo.panels.forEach(panelRef => {
+    //             const keyword = panelRef.panelData.keyword;
+    //             if (!displayedPanelKeywords.has(keyword)) {
+    //                 const panelElement = document.querySelector(`[data-keyword="${keyword}"]`);
+    //                 if (panelElement) {
+    //                     foundDirectMatches.push({ type: 'panel', element: panelElement, data: panelRef.panelData });
+    //                     displayedPanelKeywords.add(keyword);
+    //                 }
+    //             }
+    //         });
+    //     }
+    // });
 
     const allParagraphs = paragraphContainer.querySelectorAll('.content-paragraph');
     allParagraphs.forEach(p => p.classList.add('hide'));
@@ -3586,7 +3585,6 @@ function filterContentWithBiomarkersEnhanced(lowerQuery) {
 }
 
 
-   // Modified renderInitialParagraphs function - only the relevant part
     function renderInitialParagraphs() {
         paragraphContainer.innerHTML = '';
         
